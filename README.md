@@ -3,7 +3,10 @@
 **KOSPI / KOSDAQ closing prices and DART regulatory filings, published every trading day as
 AI‑readable JSON. No signup. No API key. No rate limit.**
 
-🔗 **Site:** https://aikstockdata.com · **MCP endpoint:** `https://aikstockdata-mcp.na4tech.workers.dev/mcp`
+🔗 **Site:** https://aikstockdata.com · **MCP endpoint:** `https://mcp.aikstockdata.com/mcp`
+
+Listed in the [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.aikstockdata/mcp)
+as **`com.aikstockdata/mcp`** (domain-verified).
 
 [![MCP](https://img.shields.io/badge/MCP-server-blue)](https://modelcontextprotocol.io)
 [![Auth](https://img.shields.io/badge/auth-none-brightgreen)]()
@@ -33,7 +36,7 @@ pre‑built public files, so it works the moment you paste the URL.
 Add this URL as a custom connector in settings. No authentication.
 
 ```
-https://aikstockdata-mcp.na4tech.workers.dev/mcp
+https://mcp.aikstockdata.com/mcp
 ```
 
 Six tools become available: `get_today`, `search_stock`, `get_stock`, `get_rankings`,
