@@ -1,7 +1,8 @@
 # aikstockdata — Korean Stock Data for AI (MCP + free JSON)
 
-**KOSPI / KOSDAQ closing prices and DART regulatory filings, published every trading day as
-AI‑readable JSON. No signup. No API key. No rate limit.**
+**KOSPI / KOSDAQ closing prices, KOSPI·KOSDAQ index levels, DART regulatory filings and
+1‑year daily price history for ~1,500 stocks — published every trading day as AI‑readable
+JSON. No signup. No API key. No rate limit.**
 
 🔗 **Site:** https://aikstockdata.com · **MCP endpoint:** `https://mcp.aikstockdata.com/mcp`
 
@@ -93,8 +94,12 @@ https://aikstockdata.com/data/public/index.json
 
 | Endpoint | What it is | Size |
 |---|---|---|
-| `today.json` | One‑day market digest — breadth, top filings, rankings, earnings | 7 KB |
+| `today.json` | One‑day digest — **KOSPI/KOSDAQ index close**, breadth, top filings, rankings | 7 KB |
 | `s/{code6}.json` | **One stock** — quote, financials, recent filings, signals | ~5 KB |
+| `s/{code6}_history.json` | **One stock, 250 trading days** — `[date, close, volume]` | ~7 KB |
+| `disclosure_impact.json` | **What happened after each filing type** — market‑adjusted median return at +1/+5/+20 trading days | 60 KB |
+| `earnings_recent60.json` | Earnings scoreboard, latest 60 (truncation‑safe) | 40 KB |
+| `daily/today_{YYYYMMDD}.json` | Archived daily digest (30‑day window) | 7 KB |
 | `search_index_min.json` | Name → code lookup (URL patterns declared once) | 83 KB |
 | `disclosures_top100.json` | Top 100 filings by importance score, plain‑Korean explanation | 80 KB |
 | `quotes_top300.json` | Top 300 by market cap, sort order guaranteed | 84 KB |
@@ -107,7 +112,9 @@ https://aikstockdata.com/data/public/index.json
 | `notices.json` | Machine‑readable incident and correction log | 9 KB |
 | `quotes.csv` / `quotes_en.csv` | Same data as CSV (Korean / English headers) | 161 KB |
 
-Also: [`/llms.txt`](https://aikstockdata.com/llms.txt) ·
+Also: [**`/openapi.json`**](https://aikstockdata.com/openapi.json) (OpenAPI 3.1 — drop it into a
+ChatGPT custom GPT as an Action, or generate an SDK) ·
+[`/llms.txt`](https://aikstockdata.com/llms.txt) ·
 [`/llms-full.txt`](https://aikstockdata.com/llms-full.txt) ·
 [`/feed.xml`](https://aikstockdata.com/feed.xml) ·
 JSON Schemas under `/data/public/schemas/`
@@ -118,6 +125,52 @@ Most AI fetch tools cut responses at 50–150 KB, and a truncated JSON is **unpa
 produces silently wrong answers rather than an error. `index.json` carries a machine‑readable
 `fetch_guide` block with the small alternative for every large file. Rule of thumb: if you need
 one stock, always use `s/{code}.json`.
+
+---
+
+## What you can't get anywhere else for free
+
+### 1. What actually happened after each filing type
+
+Every filing is joined to that stock's daily closes and to its market index, so you can ask
+*"what did the market do after this kind of filing, historically?"* — as a record, not a forecast.
+
+```
+https://aikstockdata.com/data/public/disclosure_impact.json
+```
+
+For each filing type: the **median market‑adjusted return** at +1 / +5 / +20 trading days
+(stock return minus its own index over the same window), plus how often it beat the market.
+Per‑filing values are keyed by DART receipt number, so you can join back to the original document.
+(`배당 결정` = dividend decision. Real values as of 2026‑08‑05.)
+
+```json
+{ "label": "배당 결정",
+  "h5": { "n": 27, "enough": true, "median_excess_pct": 3.91, "up_ratio_pct": 74.1 } }
+```
+
+Types with fewer than 20 samples are **not** given a number — a median over a handful of cases
+turns coincidence into a statistic. This is a record of what happened, not a claim about cause,
+and not a prediction.
+
+### 2. One year of daily prices per stock, as one small file
+
+`s/{code6}_history.json` — up to 250 trading days of `[date, close, volume]`, ~7 KB.
+Rows are arrays, not objects: repeating six key names 250 times doubles the file for no
+information (measured: 14.3 KB → 6.8 KB).
+
+### 3. Index and breadth are kept separate — because they disagree
+
+`today.json` carries both the KOSPI/KOSDAQ close **and** the advance/decline count, because they
+routinely point opposite ways. On 2026‑08‑03 KOSPI fell 5.12% while 855 stocks rose and 518 fell:
+the index is cap‑weighted, the count is one vote per stock. Most sources give you only one of the
+two and let you assume they agree.
+
+### 4. A dated page per trading day, permanently
+
+`https://aikstockdata.com/market/{YYYY-MM-DD}` — the URL date is the **closing‑price date**, not
+the publish date. (We got that wrong once and a crash day carried a +17.9% headline for a few
+hours. Now the date and the data cannot disagree.)
 
 ---
 
@@ -189,6 +242,10 @@ AI가 그대로 인용할 수 있는 JSON으로 발행합니다.
 - **AI에 연결하기**: Claude·ChatGPT 설정의 '커스텀 커넥터'에 위 MCP 주소를 붙여넣으면 끝입니다.
 - **그냥 물어보기**: `https://aikstockdata.com/data/public/today.json 읽고 오늘 시장 요약해줘`
 - **한 종목만**: `https://aikstockdata.com/data/public/s/005930.json` (약 5KB)
+- **한 종목 1년 시세**: `.../s/005930_history.json` — 250거래일 `[날짜, 종가, 거래량]` (약 7KB)
+- **공시 뒤 무슨 일이 있었나**: `.../disclosure_impact.json` — 공시 유형별로 접수일 종가 대비
+  1·5·20거래일 뒤 **시장조정 수익률 중앙값**(종목 − 소속 지수). 과거 기록이며 예측이 아닙니다.
+- **개발자용 명세**: https://aikstockdata.com/openapi.json (OpenAPI 3.1 — GPT Actions·SDK 생성)
 - **사람이 보는 안내**: https://aikstockdata.com/ai.html
 
 ### 설계 원칙
