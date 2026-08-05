@@ -90,7 +90,7 @@ curl -s https://aikstockdata.com/data/public/s/005930.json | jq .quote
 ## Prefer a bulk download? Hugging Face
 
 The live API below is republished every trading evening. If you would rather pull one file and
-work offline, a dated snapshot is mirrored as CSV:
+work offline, a dated snapshot is mirrored there:
 
 **<https://huggingface.co/datasets/aikstockdata/korea-equity-daily>**
 
@@ -98,11 +98,16 @@ work offline, a dated snapshot is mirrored as CSV:
 from datasets import load_dataset
 
 px = load_dataset("aikstockdata/korea-equity-daily", "daily_prices", split="train")
-# 361,111 rows: 1,463 stocks x 250 trading days (close and volume)
+# 361,111 rows across 1,463 stocks, up to 250 trading days each (close and volume)
 ```
 
-Three configs: `daily_prices`, `stocks`, `filing_impact_summary`. The snapshot is frozen at its
-upload date — the endpoints below are the ones that stay current.
+Four configs: `daily_prices`, `stocks`, `filing_impact_summary`, and `filing_price_impact` —
+the individual filings behind the summary, one row each, so the published medians can be
+recomputed rather than taken on trust.
+
+The loadable files are JSON Lines, not CSV. A Korean ticker is six digits *including leading
+zeros*, and type inference on CSV turns `000020` into `20`, at which point it joins to nothing.
+The snapshot is frozen at its upload date — the endpoints below are the ones that stay current.
 
 ---
 
