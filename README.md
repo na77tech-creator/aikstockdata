@@ -9,6 +9,7 @@ JSON. No signup. No API key. No rate limit.**
 Listed in the [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.aikstockdata/mcp)
 as **`com.aikstockdata/mcp`** (domain-verified).
 
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20dataset-korea--equity--daily-yellow)](https://huggingface.co/datasets/aikstockdata/korea-equity-daily)
 [![MCP](https://img.shields.io/badge/MCP-server-blue)](https://modelcontextprotocol.io)
 [![Auth](https://img.shields.io/badge/auth-none-brightgreen)]()
 [![License](https://img.shields.io/badge/data-public%20domain%20derived-brightgreen)]()
@@ -68,6 +69,8 @@ samsung = get("/data/public/s/005930.json")     # one stock, ~5 KB
 print(samsung["quote"], samsung["financials"])
 ```
 
+**Why the User-Agent header?** The CDN's bot filter rejects the default `Python-urllib` user agent with a 403. `requests`, `curl`, `httpx` and browser `fetch` work without it. Sending any UA string is enough.
+
 ### JavaScript (browser or Node — CORS is open)
 
 ```js
@@ -81,6 +84,25 @@ console.log(today.market_breadth, today.quote_as_of);
 ```bash
 curl -s https://aikstockdata.com/data/public/s/005930.json | jq .quote
 ```
+
+---
+
+## Prefer a bulk download? Hugging Face
+
+The live API below is republished every trading evening. If you would rather pull one file and
+work offline, a dated snapshot is mirrored as CSV:
+
+**<https://huggingface.co/datasets/aikstockdata/korea-equity-daily>**
+
+```python
+from datasets import load_dataset
+
+px = load_dataset("aikstockdata/korea-equity-daily", "daily_prices", split="train")
+# 361,111 rows: 1,463 stocks x 250 trading days (close and volume)
+```
+
+Three configs: `daily_prices`, `stocks`, `filing_impact_summary`. The snapshot is frozen at its
+upload date — the endpoints below are the ones that stay current.
 
 ---
 
