@@ -479,12 +479,19 @@ https://aikstockdata.com/data/public/disclosure_impact.json
 For each filing type: the **median market‑adjusted return** at +1 / +5 / +20 trading days
 (stock return minus its own index over the same window), plus how often it beat the market.
 Per‑filing values are keyed by DART receipt number, so you can join back to the original document.
-(`배당 결정` = dividend decision. Real values as of 2026‑08‑05.)
+(`배당 결정` = dividend decision. Live values as of 2026‑08‑07; they change every trading evening — always read the interval from the file, not from this page.)
 
 ```json
 { "label": "배당 결정",
-  "h5": { "n": 27, "enough": true, "median_excess_pct": 3.91, "up_ratio_pct": 74.1 } }
+  "h5": { "n": 41, "enough": true, "median_excess_pct": 2.28,
+          "median_ci95": [0.23, 4.65], "ci_includes_zero": false,
+          "up_ratio_pct": 68.3 } }
 ```
+
+**Read `median_ci95` before `median_excess_pct`.** Of the cells currently carrying a
+number, most have an interval spanning zero — those values are not distinguishable
+from zero. The interval ships in the same object so you cannot take the median alone
+by accident.
 
 Types with fewer than 20 samples are **not** given a number — a median over a handful of cases
 turns coincidence into a statistic. This is a record of what happened, not a claim about cause,
