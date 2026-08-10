@@ -29,10 +29,21 @@
 https://mcp.aikstockdata.com/mcp
 ```
 
-도구 6개가 생깁니다 — `get_today` · `search_stock` · `get_stock` · `get_rankings` ·
-`get_market_summary` · `get_data_urls`.
+도구 10개가 생깁니다.
 
-그다음엔 그냥 물어보면 됩니다: *"오늘 한국 시장 어땠어?"* · *"삼성전자 최근 공시 정리해줘"*
+| 도구 | 무엇을 |
+|---|---|
+| `get_today` | 오늘 시장 한 방에 — 등락·상승하락 종목 수·주요 공시 |
+| `search_stock` · `get_stock` | 종목 찾기 · 종목 상세(시세·재무·공시) |
+| `get_rankings` · `get_market_summary` | 순위표 · 시장 요약 |
+| `list_stocks` | **조건에 맞는 종목 목록** — 흑자전환·52주 신고저에 시총÷연환산영업이익 배수 상한까지 |
+| `get_earnings` | **잠정 실적 포함** — 정기보고서보다 2주 빠릅니다 |
+| `get_history` | 250거래일 일별 시세 + 52주 고저·고점 대비 낙폭·거래량 배수 |
+| `get_disclosure_impact` | 공시 유형별로 그 뒤 1·5·20거래일 주가(시장 등락을 뺀 값) |
+| `get_data_urls` | 원자료 주소 카탈로그 — 도구에 없는 것도 JSON 으로 다 있습니다 |
+
+그다음엔 그냥 물어보면 됩니다: *"오늘 한국 시장 어땠어?"* · *"삼성전자 최근 공시 정리해줘"* ·
+*"흑자전환한 종목 중에 시총이 영업이익의 10배 안 되는 것만"*
 
 ### MCP 없이 — 주소만 붙여넣기
 
@@ -332,10 +343,21 @@ Add this URL as a custom connector in settings. No authentication.
 https://mcp.aikstockdata.com/mcp
 ```
 
-Six tools become available: `get_today`, `search_stock`, `get_stock`, `get_rankings`,
-`get_market_summary`, `get_data_urls`.
+Ten tools become available.
 
-Then just ask: *"오늘 한국 시장 어땠어?"* or *"Samsung Electronics latest disclosures?"*
+| Tool | What it does |
+|---|---|
+| `get_today` | Whole market in one call — breadth, tone, top filings |
+| `search_stock` · `get_stock` | Find a ticker · full detail (price, financials, filings) |
+| `get_rankings` · `get_market_summary` | Ranking tables · market digest |
+| `list_stocks` | **The list, not just the count** — turnaround to profit, 52-week high/low, with a cap÷annualised-operating-income ceiling |
+| `get_earnings` | **Preliminary results included** — filed ~2 weeks before the regular report |
+| `get_history` | 250 trading days of daily prices + 52w high/low, drawdown, volume ratio |
+| `get_disclosure_impact` | Market-adjusted price path at +1/+5/+20 days after each filing type |
+| `get_data_urls` | Catalogue of raw JSON — the tool list is not the extent of the data |
+
+Then just ask: *"오늘 한국 시장 어땠어?"* or *"Samsung Electronics latest disclosures?"* or
+*"Which stocks turned profitable and trade under 10× operating income?"*
 
 ### Any AI, without MCP — paste a URL
 

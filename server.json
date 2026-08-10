@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.aikstockdata/mcp",
   "title": "aikstockdata — Korean Stock Data",
-  "description": "KOSPI/KOSDAQ closing prices and DART regulatory filings. Free, no signup, no API key.",
-  "version": "2.0.0",
+  "description": "KOSPI/KOSDAQ closing prices, DART filings with receipt times, quarterly earnings incl. preliminary, and condition-based screening. Free, no signup, no API key.",
+  "version": "2.1.0",
   "websiteUrl": "https://aikstockdata.com",
   "repository": {
     "url": "https://github.com/na77tech-creator/aikstockdata",

@@ -15,13 +15,17 @@
  */
 
 const ORIGIN = "https://aikstockdata.com";
-const UA = "aikstockdata-mcp/2.0 (+https://aikstockdata.com/ai.html)";
+// [2026-08-10] ai.html → ai. 사이트가 확장자 없는 정본으로 바뀌어 .html 은 307 이다.
+// 우리가 남의 로그에 찍는 주소가 리다이렉트를 타게 두지 않는다.
+const UA = "aikstockdata-mcp/2.1 (+https://aikstockdata.com/ai)";
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
 
 const SERVER_INFO = {
   name: "aikstockdata-mcp",
   title: "한국주식데이터 (aikstockdata.com)",
-  version: "2.0.0",
+  // 2.1.0 — 도구 6개 → 10개(list_stocks·get_earnings·get_history·get_disclosure_impact).
+  // 도구가 늘면 여기를 올린다. 레지스트리·공개 저장소의 server.json 과 반드시 같은 값이어야 한다.
+  version: "2.1.0",
 };
 const SUPPORTED_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const LATEST_VERSION = "2025-06-18";
@@ -32,7 +36,14 @@ const INSTRUCTIONS =
   "open-government data (freely redistributable). All data is a dated snapshot, not real-time — always " +
   "read the '기준일' (as-of date) in every tool response. A value of null means 'not provided' and is " +
   "different from 0. Rankings are mechanical calculations from public financials, not stock picks. " +
-  "This server provides information only; it is not investment advice.";
+  "This server provides information only; it is not investment advice. " +
+  "IMPORTANT — the tool list is NOT the extent of the data. Preliminary quarterly earnings "
+  + "(filed ~2 weeks before the regular report), 250 trading days of daily prices per stock, "
+  + "post-filing price paths by filing type, and an intraday (15:00 KST) disclosure list with "
+  + "receipt timestamps are all available. Call get_data_urls() before concluding that "
+  + "something is unavailable. | ★도구 목록이 데이터의 전부가 아닙니다. 잠정실적·1년 일별 "
+  + "시계열·공시 유형별 이후 주가·장중 공시(접수 시각)가 모두 있습니다. '없다'고 결론내기 "
+  + "전에 get_data_urls() 를 부르세요.";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -82,8 +93,17 @@ const mcFmt = (v) => {
 };
 const eok = (won) => (won == null ? "미제공" : mcFmt(Math.round(won / 1e8)));
 
+// ★[2026-08-10 실사용자 신고] 도구 6개만 보고 "이 서비스는 잠정실적·시계열이 없다"고
+// 결론내린 AI 가 있었다. 데이터는 둘 다 이미 있었다(earnings.json · s/{code}_history.json).
+// **AI 는 도구 목록을 능력의 경계로 읽는다.** 목록에 없으면 없는 것으로 취급한다.
+// 그래서 모든 응답 꼬리에 "여기 말고 더 있다"를 한 줄 고정으로 붙인다.
+const MORE_LINE =
+  "데이터 20종 전체 카탈로그: get_data_urls() — 잠정실적(earnings)·1년 일별 시계열·" +
+  "공시 이후 주가(disclosure_impact)·장중 공시(접수 시각)도 있습니다. 조건으로 목록을 뽑으려면 list_stocks().";
+
 function footer(basisDate, srcPath) {
-  return `\n---\n기준일 ${basisDate || "미기록"} | 출처 ${ORIGIN}${srcPath} | 투자 권유가 아닌 정보 제공입니다.`;
+  return `\n---\n기준일 ${basisDate || "미기록"} | 출처 ${ORIGIN}${srcPath} | 투자 권유가 아닌 정보 제공입니다.` +
+         `\n${MORE_LINE}`;
 }
 
 function userError(message) {
@@ -392,6 +412,288 @@ const TOOLS = [
       return out.join("\n") + footer(basis, "/data/public/index.json");
     },
   },
+  // ★[2026-08-10 실사용자 신고] 아래 셋은 **데이터가 이미 있는데 도구가 없어서**
+  // 아무도 못 쓰던 것들이다. 한 사용자가 잠정실적을 못 찾아 "이 서비스는 못 본다"고
+  // 자기 문서에 박제했고, 250일 시계열이 있는 줄 몰라 pykrx 를 따로 설치했다.
+  {
+    name: "get_earnings",
+    title: "잠정·정기 실적 (Quarterly earnings, incl. preliminary)",
+    description:
+      "Quarterly earnings from DART, INCLUDING preliminary (잠정) results filed ~2 weeks before the " +
+      "regular report. Pass a code for one stock's history, or omit it for the largest caps. " +
+      "get_stock returns the REGULAR report only — use this for the newest numbers. | " +
+      "DART 분기 실적 — 정기보고서보다 2주 빠른 잠정실적 포함. code 를 주면 그 종목 이력, " +
+      "생략하면 시총 상위. get_stock 은 정기보고서만 주므로 최신 수치는 이 도구로 보세요.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        code: { type: "string", description: "6-digit ticker, optional | 6자리 종목코드(선택)" },
+        limit: { type: "number", description: "max rows, default 15 | 최대 건수(기본 15)" },
+      },
+    },
+    run: async (args) => {
+      const code = String(args.code ?? "").trim();
+      const limit = Math.max(1, Math.min(60, Number(args.limit) || 15));
+      const d = await fetchJson("/data/public/earnings_recent60.json");
+      let items = d["items"] || [];
+      let src = "/data/public/earnings_recent60.json";
+      if (code) {
+        if (!/^\d{6}$/.test(code)) throw userError("code 는 6자리 숫자여야 합니다. 예: 005930");
+        const all = await fetchJson("/data/public/earnings.json");
+        src = "/data/public/earnings.json";
+        items = (all["items"] || []).filter((x) => String(x["code"]) === code);
+        if (!items.length) {
+          return "코드 " + code + " 의 실적 공시가 최근 120일 롤링에 없습니다.\n" +
+            "전체 원장: " + ORIGIN + "/data/public/earnings.json" + footer(d["as_of"], src);
+        }
+      }
+      const out = [code ? items[0]["name"] + " (" + code + ") 실적 공시" : "실적 공시 — 시총 상위 + 최근 접수"];
+      out.push("");
+      for (const x of items.slice(0, limit)) {
+        // ★수치가 없는 이유는 셋이고 서로 전혀 다르다(2026-08-10 원문 5건 대조).
+        //   withdrawn  회계 항등식을 어겨 우리가 뺐다 — 우리가 잘한 것
+        //   no_values  공시 자체에 수치가 없다(판매대수 공시 등) — DART 내용
+        //   failed     우리가 못 뽑았다 — 우리 결함
+        // 하나로 뭉뚱그려 "파싱 실패"라고 쓰면 멀쩡한 판단이 결함으로 읽힌다.
+        // 전체 원장에는 parse_status 가 없으므로 value_status 로 판정한다.
+        const fin0 = x["fin"] || {};
+        const hasNum = ["매출액", "영업이익", "순이익"].some(
+          (k) => (fin0[k] || {})["당기"] != null);
+        const vs = String(x["value_status"] || "");
+        const st = x["parse_status"] || (
+          (x["fact"] || hasNum) ? "ok"
+            : vs === "withdrawn_inconsistent" ? "withdrawn"
+            : vs === "no_values_in_filing" ? "no_values" : "failed");
+        const WHY = {
+          withdrawn: "⚠ 수치를 뽑았으나 회계 항등식을 어겨(예: 순이익>매출액) 발행에서 뺐습니다 — 원문 확인: ",
+          no_values: "ℹ 이 공시에는 재무 수치가 없습니다(판매대수만 담은 잠정공시 등) — 원문: ",
+          failed: "⚠ 수치를 뽑지 못했습니다(저희 결함) — 원문 확인: ",
+        };
+        // label 에 이미 "(연결)"이 들어 있는 경우가 있다 — 두 번 붙이지 않는다
+        const lab = String(x["label"] || "");
+        const bas = String(x["basis"] || "");
+        out.push("- " + x["rcept_dt"] + " " + (x["name"] || "") + " · " + lab +
+          (bas && lab.indexOf(bas) < 0 ? "(" + bas + ")" : ""));
+        out.push("  " + (st === "ok"
+          ? (x["fact"] || "수치 미제공")
+          : WHY[st] + (x["url"] || "")));
+      }
+      out.push("");
+      out.push("잠정치는 확정치가 아닙니다. 확정은 다음 정기보고서에서 확인하세요.");
+      out.push("전체 원장(120일 롤링): " + ORIGIN + "/data/public/earnings.json");
+      return out.join("\n") + footer(d["as_of"], src);
+    },
+  },
+  {
+    name: "get_history",
+    title: "종목 일별 시세 1년 (Daily price history)",
+    description:
+      "Up to 250 trading days of daily close & volume for one stock, plus computed 52-week high/low, " +
+      "drawdown from the high, and volume vs 60-day average. | 한 종목의 250거래일 일별 종가·거래량과 " +
+      "52주 고저·고점 대비 낙폭·60일 평균 거래량 대비 배수를 함께 계산해 줍니다.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        code: { type: "string", description: "6-digit ticker | 6자리 종목코드" },
+        days: { type: "number", description: "recent N days to list, default 20 | 나열할 최근 일수(기본 20)" },
+      },
+      required: ["code"],
+    },
+    run: async (args) => {
+      const code = String(args.code ?? "").trim();
+      if (!/^\d{6}$/.test(code)) throw userError("code 는 6자리 숫자여야 합니다. 예: 005930");
+      const days = Math.max(1, Math.min(60, Number(args.days) || 20));
+      let h;
+      try {
+        h = await fetchJson("/data/public/s/" + code + "_history.json");
+      } catch (e) {
+        return "코드 " + code + " 의 시계열이 없습니다(유니버스 밖일 수 있음).\n종목 목록: " + ORIGIN + "/stocks";
+      }
+      const rows = h["rows"] || h["items"] || [];
+      if (!rows.length) return "코드 " + code + " 시계열이 비어 있습니다.";
+      const cl = (r) => (Array.isArray(r) ? r[1] : r["close"]);
+      const vl = (r) => (Array.isArray(r) ? r[2] : r["volume"]);
+      const dt = (r) => (Array.isArray(r) ? r[0] : r["date"]);
+      const px = rows.map(cl).filter((v) => v != null);
+      const vol = rows.map(vl).filter((v) => v != null);
+      const hi = Math.max.apply(null, px);
+      const lo = Math.min.apply(null, px);
+      const last = px[px.length - 1];
+      const v60 = vol.slice(-60);
+      const avg60 = v60.length ? v60.reduce((a, b) => a + b, 0) / v60.length : null;
+      const lastVol = vol[vol.length - 1];
+      const out = [(h["name_ko"] || code) + " (" + code + ") 일별 시세 — " + rows.length + "거래일"];
+      out.push("");
+      out.push("- 최근 종가: " + fmt(last) + "원 (" + dt(rows[rows.length - 1]) + ")");
+      out.push("- 기간 내 최고/최저: " + fmt(hi) + " / " + fmt(lo) + "원");
+      out.push("- 최고가 대비: " + ((last / hi - 1) * 100).toFixed(1) + "%");
+      if (avg60) out.push("- 최근 거래량 / 60일 평균: " + (lastVol / avg60).toFixed(2) + "배");
+      out.push("");
+      out.push("[최근 " + days + "거래일]");
+      for (const r of rows.slice(-days).reverse()) {
+        out.push("  " + dt(r) + "  " + fmt(cl(r)) + "원  " + fmt(vl(r)) + "주");
+      }
+      out.push("");
+      out.push("전 영업일 확정 종가이며 수정주가가 아닙니다 — 권리락·병합 구간은 계열이 끊깁니다.");
+      return out.join("\n") + footer(h["as_of"] || "", "/data/public/s/" + code + "_history.json");
+    },
+  },
+  {
+    name: "get_disclosure_impact",
+    title: "공시 유형별 이후 주가 (Post-filing price path)",
+    description:
+      "For each filing type, the median MARKET-ADJUSTED return at +1/+5/+20 trading days after the " +
+      "filing, with 95% intervals. A record of what happened — not a forecast, not a recommendation. " +
+      "Not available from other free Korean sources. | 공시 유형별로 접수 이후 1·5·20거래일 뒤까지 " +
+      "시장 등락을 뺀 수익률 중앙값과 95% 구간. 과거 기록이며 예측·추천이 아닙니다.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        label: { type: "string", description: "filing type in Korean, e.g. 배당 결정 | 공시 유형(선택)" },
+      },
+    },
+    run: async (args) => {
+      const want = String(args.label ?? "").trim();
+      const d = await fetchJson("/data/public/disclosure_impact_summary.json");
+      const all = d["summary"] || [];
+      const rows = all.filter((r) => !want || String(r["label"]).indexOf(want) >= 0);
+      if (!rows.length) {
+        return "'" + want + "' 유형이 없습니다.\n가능한 유형: " +
+          all.map((r) => r["label"]).join(" · ");
+      }
+      const HZ = { h1: "+1거래일", h5: "+5거래일", h20: "+20거래일" };
+      const out = ["공시 유형별 이후 주가 경로 — 시장조정 수익률 중앙값"];
+      out.push("과거 사실의 사후 집계입니다. 인과도, 예측도, 추천도 아닙니다.");
+      out.push("");
+      for (const r of rows) {
+        out.push("[" + r["label"] + "]");
+        for (const k of ["h1", "h5", "h20"]) {
+          const c = r[k];
+          if (!c || !c["enough"]) continue;
+          const ci = c["median_ci95"] || [];
+          const zero = c["ci_includes_zero"] ? "  ← 0을 포함(0과 구분되지 않음)" : "";
+          out.push("  " + HZ[k] + ": " + pct(c["median_excess_pct"]) +
+            " (95% " + pct(ci[0]) + "~" + pct(ci[1]) + ", n=" + c["n"] + ")" + zero);
+        }
+        const rs = r["receipt_sessions"] || {};
+        const tot = (rs["pre_open"] || 0) + (rs["intraday"] || 0) + (rs["after_close"] || 0);
+        if (tot) {
+          out.push("  접수 시각: 장전 " + (rs["pre_open"] || 0) + " · 장중 " + (rs["intraday"] || 0) +
+            " · 장후 " + (rs["after_close"] || 0));
+        }
+      }
+      out.push("");
+      out.push("접수일 당일(h0)은 접수 시각 탓에 공시 반응으로 식별되지 않아 여기서 뺐습니다.");
+      out.push("표 전체: " + ORIGIN + "/disclosure-impact");
+      return out.join("\n") + footer(d["as_of"] || "", "/data/public/disclosure_impact_summary.json");
+    },
+  },
+  // ★[2026-08-10 실사용자 신고] "get_market_summary 가 '흑자전환 110종목'이라고 알려주는데
+  // 그 110개가 뭔지 볼 방법이 없다. 오늘 스크리닝하다가 여기서 막혔다."
+  // 개수만 주고 목록을 안 주면 전 종목을 하나씩 조회하는 수밖에 없다.
+  {
+    name: "list_stocks",
+    title: "조건으로 종목 목록 (Screen stocks by condition)",
+    description:
+      "Return the LIST of stocks matching a condition — turnaround to profit, 52-week high/low, " +
+      "growth or quiet-performer rankings — with optional market-cap range and a cap-to-operating-income " +
+      "multiple ceiling. Other tools give counts; this one gives the names. | 조건에 맞는 종목 " +
+      "목록을 돌려줍니다 — 흑자전환·52주 신고저·성장/조용한 실적주. 시총 범위와 " +
+      "시총÷연환산영업이익 배수 상한도 걸 수 있습니다. 다른 도구가 개수를 준다면 이건 목록을 줍니다.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        filter: {
+          type: "string",
+          description:
+            "turnaround(흑자전환) | new_high(52주 신고가) | new_low(52주 신저가) | " +
+            "growth(성장 TOP) | quiet(조용한 실적주) | all(전체). 기본 turnaround",
+        },
+        max_multiple: {
+          type: "number",
+          description: "시총÷연환산영업이익 상한(예: 10). 영업이익 흑자 종목만 남습니다",
+        },
+        min_cap_eok: { type: "number", description: "시가총액 하한(억원)" },
+        max_cap_eok: { type: "number", description: "시가총액 상한(억원)" },
+        sort: {
+          type: "string",
+          description: "cap(시총 큰 순, 기본) | multiple(배수 낮은 순) | change(등락률 높은 순)",
+        },
+        limit: { type: "number", description: "최대 건수(기본 20, 최대 100)" },
+      },
+    },
+    run: async (args) => {
+      const F = String(args.filter ?? "turnaround").trim().toLowerCase();
+      const OK = ["turnaround", "new_high", "new_low", "growth", "quiet", "all"];
+      if (OK.indexOf(F) < 0) {
+        throw userError("filter 는 다음 중 하나여야 합니다: " + OK.join(" | "));
+      }
+      const limit = Math.max(1, Math.min(100, Number(args.limit) || 20));
+      const maxMul = Number(args.max_multiple) || null;
+      const minCap = args.min_cap_eok != null ? Number(args.min_cap_eok) * 1e8 : null;
+      const maxCap = args.max_cap_eok != null ? Number(args.max_cap_eok) * 1e8 : null;
+      const sort = String(args.sort ?? "cap").trim().toLowerCase();
+
+      let d;
+      try {
+        d = await fetchJson("/data/public/screen.json");
+      } catch (e) {
+        return "조건 검색 재료가 아직 발행되지 않았습니다. 전체 시세는 " +
+          ORIGIN + "/data/public/quotes.json 을 쓰세요.";
+      }
+      // rows: [code,name,market,cap,close,pct,value,opAnn,mult,turn,growth,quiet,hi,lo]
+      const I = { code: 0, name: 1, mkt: 2, cap: 3, close: 4, pct: 5, val: 6,
+                  op: 7, mult: 8, turn: 9, growth: 10, quiet: 11, hi: 12, lo: 13 };
+      const PICK = {
+        turnaround: (r) => r[I.turn],
+        new_high: (r) => r[I.hi],
+        new_low: (r) => r[I.lo],
+        growth: (r) => r[I.growth],
+        quiet: (r) => r[I.quiet],
+        all: () => true,
+      };
+      let rows = (d["rows"] || []).filter(PICK[F]);
+      const nMatched = rows.length;
+      if (maxMul != null) rows = rows.filter((r) => r[I.mult] != null && r[I.mult] <= maxMul);
+      if (minCap != null) rows = rows.filter((r) => (r[I.cap] || 0) >= minCap);
+      if (maxCap != null) rows = rows.filter((r) => (r[I.cap] || 0) <= maxCap);
+      const nAfter = rows.length;
+
+      const KEY = {
+        cap: (r) => -(r[I.cap] || 0),
+        multiple: (r) => (r[I.mult] == null ? Infinity : r[I.mult]),
+        change: (r) => -(r[I.pct] == null ? -Infinity : r[I.pct]),
+      };
+      rows = rows.slice().sort((a, b) => (KEY[sort] || KEY.cap)(a) - (KEY[sort] || KEY.cap)(b));
+
+      const NAME_KO = {
+        turnaround: "흑자전환(전년 동기 영업적자 → 당기 흑자)",
+        new_high: "52주 신고가", new_low: "52주 신저가",
+        growth: "성장 TOP", quiet: "조용한 실적주", all: "전체",
+      };
+      const out = [NAME_KO[F] + " — " + nMatched + "종목"];
+      if (nAfter !== nMatched) out.push("추가 조건 적용 후 " + nAfter + "종목");
+      if (!nAfter) {
+        out.push("");
+        out.push("조건에 맞는 종목이 없습니다. 배수·시총 조건을 풀어 보세요.");
+        return out.join("\n") + footer(d["as_of"], "/data/public/screen.json");
+      }
+      out.push("");
+      for (const r of rows.slice(0, limit)) {
+        const mul = r[I.mult] == null ? "배수 산출불가" : "시총/연환산영업이익 " + r[I.mult] + "배";
+        out.push("- " + r[I.name] + " (" + r[I.code] + ") " + (r[I.mkt] || ""));
+        out.push("  종가 " + fmt(r[I.close]) + "원 (" + pct(r[I.pct]) + ") · 시총 " +
+          eok(r[I.cap]) + " · " + mul);
+      }
+      if (nAfter > limit) out.push("");
+      if (nAfter > limit) out.push("... 외 " + (nAfter - limit) + "종목 (limit 를 올리거나 조건을 좁히세요)");
+      out.push("");
+      out.push("배수는 시가총액 ÷ 연환산 영업이익입니다(분기 누적을 1년치로 환산). " +
+        "PER 이 아니며 영업이익 기준입니다. 영업이익이 0 이하면 산출하지 않습니다.");
+      out.push("기계 산정이고 추천이 아닙니다. 원자료: " + ORIGIN + "/data/public/screen.json");
+      return out.join("\n") + footer(d["as_of"], "/data/public/screen.json");
+    },
+  },
 ];
 
 // ── JSON-RPC 2.0 처리 ─────────────────────────────────────────────────────
@@ -581,9 +883,25 @@ export default {
     }
     if (url.pathname === "/mcp" || url.pathname === "/mcp/") {
       if (request.method === "POST") return handleMcpPost(request);
-      // GET /mcp (또는 DELETE 등) — 무상태 서버: 스트림·세션 미지원
+      // GET /mcp (또는 DELETE 등) — 무상태 서버: 스트림·세션 미지원.
+      // ★405 는 규약상 '정답'이다(MCP Streamable HTTP: SSE 스트림을 제공하지 않으면 GET 에
+      //   405 를 반환해야 한다). 다만 [2026-08-03 AI 리뷰 3건]이 "GET 405 라 뭐가 있는지
+      //   알 수 없다"고 지적했다 → 상태코드는 규약대로 두고 **본문에 도구 목록과 호출법**을
+      //   넣어, 주소만 눌러본 사람·크롤러도 서버의 정체를 바로 알 수 있게 한다.
       return jsonResponse(
-        rpcError(null, -32000, "Method Not Allowed: send a JSON-RPC 2.0 POST to /mcp (stateless server; GET stream and sessions are not supported)"),
+        {
+          ...rpcError(null, -32000, "Method Not Allowed: send a JSON-RPC 2.0 POST to /mcp (stateless server; GET stream and sessions are not supported)"),
+          server: { ...SERVER_INFO, transport: "streamable-http", auth: "none" },
+          registry: "com.aikstockdata/mcp",
+          docs: `${ORIGIN}/ai.html`,
+          tools: TOOLS.map((t) => ({ name: t.name, description: t.description })),
+          example: {
+            method: "POST",
+            url: `${url.origin}/mcp`,
+            headers: { "Content-Type": "application/json" },
+            body: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+          },
+        },
         405,
         { Allow: "POST, OPTIONS" }
       );
