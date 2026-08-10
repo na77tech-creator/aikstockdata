@@ -300,6 +300,9 @@ https://aikstockdata.com/data/public/disclosure_impact.json
 이 저장소의 코드는 MIT 라이선스입니다(`LICENSE` 참조). 위 데이터 라이선스는 발행되는
 JSON·CSV 파일에 적용되며 이 저장소의 코드에는 적용되지 않습니다.
 
+발행 데이터는 정보 제공 목적이며 **투자 조언이 아닙니다**. 기계가 집계한 과거 기록이고
+어떤 종목의 매수·매도를 권하지 않습니다.
+
 ---
 
 ## 저장소 구성
@@ -584,6 +587,9 @@ with attribution:
 
 The code in this repository is MIT licensed (see `LICENSE`). The data license above applies to the
 published JSON/CSV files, not to this repository's code.
+
+The data is provided for information purposes and is **not investment advice**. It is a machine
+aggregation of past records and does not recommend buying or selling any security.
 
 ---
 
