@@ -1,4 +1,4 @@
-MIT License
+﻿MIT License
 
 Copyright (c) 2026 aikstockdata.com
 
@@ -19,18 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-NOTE ON DATA LICENSING
-
-This MIT license covers the source code in this repository only.
-
-The data published at https://aikstockdata.com/data/public/ is a derived work of
-Korean public data (금융감독원 DART · 금융위원회 공공데이터포털). It may be used
-freely, including commercially, with attribution:
-
-    자료: 한국주식데이터(aikstockdata.com)
-    원천: 금융감독원 DART · 금융위원회 공공데이터포털
-
-The data is provided for information purposes and is not investment advice.
