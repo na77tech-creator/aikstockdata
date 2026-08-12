@@ -29,15 +29,17 @@
 https://mcp.aikstockdata.com/mcp
 ```
 
-도구 10개가 생깁니다.
+도구 12개가 생깁니다.
 
 | 도구 | 무엇을 |
 |---|---|
 | `get_today` | 오늘 시장 한 방에 — 등락·상승하락 종목 수·주요 공시 |
 | `search_stock` · `get_stock` | 종목 찾기 · 종목 상세(시세·재무·공시) |
 | `get_rankings` · `get_market_summary` | 순위표 · 시장 요약 |
+| `get_disclosures` | **무슨 공시가 몇 시에 났나** — 접수 시각(HH:MM)과 장 구분(장전·장중·장마감후). 공개 API 어디에도 없는 값입니다 |
 | `list_stocks` | **조건에 맞는 종목 목록** — 흑자전환·52주 신고저에 시총÷연환산영업이익 배수 상한까지 |
 | `get_earnings` | **잠정 실적 포함** — 정기보고서보다 2주 빠릅니다 |
+| `get_earnings_calendar` | **누가 냈고 누가 아직인가** — 법정 마감 D-day, 직전 발행 대비 신규 목록. 상태를 못 들고 다니는 에이전트에겐 이게 웹훅을 대신합니다 |
 | `get_history` | 250거래일 일별 시세 + 52주 고저·고점 대비 낙폭·거래량 배수 |
 | `get_disclosure_impact` | 공시 유형별로 그 뒤 1·5·20거래일 주가(시장 등락을 뺀 값) |
 | `get_data_urls` | 원자료 주소 카탈로그 — 도구에 없는 것도 JSON 으로 다 있습니다 |
@@ -346,15 +348,17 @@ Add this URL as a custom connector in settings. No authentication.
 https://mcp.aikstockdata.com/mcp
 ```
 
-Ten tools become available.
+Twelve tools become available.
 
 | Tool | What it does |
 |---|---|
 | `get_today` | Whole market in one call — breadth, tone, top filings |
 | `search_stock` · `get_stock` | Find a ticker · full detail (price, financials, filings) |
 | `get_rankings` · `get_market_summary` | Ranking tables · market digest |
+| `get_disclosures` | **What was filed, and when exactly** — receipt time (HH:MM) and session (pre-open / intraday / after-close). Not exposed by any public Korean API |
 | `list_stocks` | **The list, not just the count** — turnaround to profit, 52-week high/low, with a cap÷annualised-operating-income ceiling |
 | `get_earnings` | **Preliminary results included** — filed ~2 weeks before the regular report |
+| `get_earnings_calendar` | **Who has filed, who hasn't** — statutory deadline D-day plus a diff of what's new since the previous publish. For stateless agents, polling this replaces a webhook |
 | `get_history` | 250 trading days of daily prices + 52w high/low, drawdown, volume ratio |
 | `get_disclosure_impact` | Market-adjusted price path at +1/+5/+20 days after each filing type |
 | `get_data_urls` | Catalogue of raw JSON — the tool list is not the extent of the data |
