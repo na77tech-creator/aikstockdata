@@ -41,7 +41,7 @@ https://mcp.aikstockdata.com/mcp
 | `get_earnings` | **잠정 실적 포함** — 정기보고서보다 2주 빠릅니다 |
 | `get_earnings_calendar` | **누가 냈고 누가 아직인가** — 법정 마감 D-day, 직전 발행 대비 신규 목록. 상태를 못 들고 다니는 에이전트에겐 이게 웹훅을 대신합니다 |
 | `get_history` | 250거래일 일별 시세 + 52주 고저·고점 대비 낙폭·거래량 배수 |
-| `get_disclosure_impact` | 공시 유형별로 그 뒤 1·5·20거래일 주가(시장 등락을 뺀 값) |
+| `get_disclosure_impact` | 공시 유형별로 그 뒤 1·5거래일 주가(시장 등락을 뺀 값). 20거래일은 그 유형의 표본이 차면 나옵니다 — 응답의 h20_status 를 보세요 |
 | `get_data_urls` | 원자료 주소 카탈로그 — 도구에 없는 것도 JSON 으로 다 있습니다 |
 
 그다음엔 그냥 물어보면 됩니다: *"오늘 한국 시장 어땠어?"* · *"삼성전자 최근 공시 정리해줘"* ·
@@ -360,7 +360,7 @@ Twelve tools become available.
 | `get_earnings` | **Preliminary results included** — filed ~2 weeks before the regular report |
 | `get_earnings_calendar` | **Who has filed, who hasn't** — statutory deadline D-day plus a diff of what's new since the previous publish. For stateless agents, polling this replaces a webhook |
 | `get_history` | 250 trading days of daily prices + 52w high/low, drawdown, volume ratio |
-| `get_disclosure_impact` | Market-adjusted price path at +1/+5/+20 days after each filing type |
+| `get_disclosure_impact` | Market-adjusted price path at +1/+5 trading days after each filing type; +20 appears per type once it has enough samples — read `h20_status` |
 | `get_data_urls` | Catalogue of raw JSON — the tool list is not the extent of the data |
 
 Then just ask: *"오늘 한국 시장 어땠어?"* or *"Samsung Electronics latest disclosures?"* or
