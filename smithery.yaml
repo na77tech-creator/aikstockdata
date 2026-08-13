@@ -1,0 +1,43 @@
+# Smithery / MCP 디렉터리 제출용 기술서 — 5호 U-3
+#
+# 왜 필요한가: 이 서버는 **원격 전용**(streamable-http)이라 설치할 것이 없다.
+# 그래서 "리포를 클론해 빌드한다"고 가정하는 디렉터리들이 우리를 못 읽는다
+# (실측 2026-08-12: Smithery·mcp.so·Cline 마켓 0건, PulseMCP "No servers found").
+# 이 파일 하나가 "설치가 아니라 URL 하나"라는 사실을 기계가 읽을 수 있게 만든다.
+#
+# ※ 제출 시점에 각 디렉터리가 요구하는 스키마가 다를 수 있다. 이 파일은 사실만
+#   담고 있으므로, 형식을 맞춰야 하면 값이 아니라 키 이름만 바꾸면 된다.
+#   정본은 언제나 mcp/server.json(공식 MCP 레지스트리 스키마)이다.
+
+runtime: remote
+
+startCommand:
+  type: http
+  url: https://mcp.aikstockdata.com/mcp
+  # 인증이 없다. 설계상 그렇다(공공데이터 가공물만 서빙 — 쓰기 경로가 없음).
+  configSchema:
+    type: object
+    properties: {}
+    required: []
+
+metadata:
+  name: aikstockdata
+  displayName: 한국주식데이터 (Korean Stock Data)
+  description: >-
+    KOSPI/KOSDAQ confirmed closing prices (T+1, Financial Services Commission),
+    DART regulatory filings with receipt time (HH:MM), preliminary quarterly
+    earnings, and post-filing price paths by filing type. No signup, no API key.
+  homepage: https://aikstockdata.com
+  documentation: https://aikstockdata.com/ai
+  repository: https://github.com/na77tech-creator/aikstockdata
+  registry: com.aikstockdata/mcp        # 공식 MCP 레지스트리 등재명(도메인 소유 인증)
+  license: MIT                          # 코드 기준. 데이터는 공공데이터 2차 저작물
+  tags:
+    - finance
+    - korea
+    - stocks
+    - dart
+    - open-data
+  transport: streamable-http
+  authentication: none
+  readOnly: true                        # 12개 도구 전부 읽기 전용(쓰기 경로 없음)
