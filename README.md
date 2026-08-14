@@ -218,9 +218,10 @@ late = [e for e in d["events"] if e["session"] == "after_close"]
 https://aikstockdata.com/data/public/disclosure_impact.json
 ```
 
-유형별로 +1 / +5 / +20거래일 뒤의 **시장조정 수익률 중앙값**(종목 수익률 − 같은 기간
-소속 지수 수익률)과 시장을 이긴 비율을 함께 냅니다. 개별 값은 DART 접수번호를 열쇠로
-싣기 때문에 원문과 대조할 수 있습니다.
+유형별로 +1 / +5거래일 뒤의 **시장조정 수익률 중앙값**(종목 수익률 − 같은 기간
+소속 지수 수익률)과 시장을 이긴 비율을 함께 냅니다. +20거래일은 그 유형의 표본이
+차면 유형별로 나옵니다 — 응답의 `h20_status` 를 보세요(없다고 결론내지 말 것).
+개별 값은 DART 접수번호를 열쇠로 싣기 때문에 원문과 대조할 수 있습니다.
 
 표본이 20건 미만인 유형에는 **숫자를 넣지 않습니다.** 몇 건짜리 중앙값은 우연을 통계로
 둔갑시킵니다. 95% 구간도 함께 싣는데, **현재 숫자가 있는 18칸 중 17칸의 구간이 0을 포함합니다.**
@@ -444,7 +445,7 @@ https://aikstockdata.com/data/public/index.json
 | `today.json` | One‑day digest — **KOSPI/KOSDAQ index close**, breadth, top filings, rankings | 7 KB |
 | `s/{code6}.json` | **One stock** — quote, financials, recent filings, signals | ~5 KB |
 | `s/{code6}_history.json` | **One stock, 250 trading days** — `[date, close, volume]` | ~7 KB |
-| `disclosure_impact.json` | **What happened after each filing type** — market‑adjusted median return at +1/+5/+20 trading days | 60 KB |
+| `disclosure_impact.json` | **What happened after each filing type** — market‑adjusted median return at +1/+5 trading days (+20 once that type's sample is full — see `h20_status`) | 60 KB |
 | `disclosures_intraday.json` | **Today's filings with receipt times (HH:MM)** — published 15:00 KST, before the close | 60 KB |
 | `dart_receipt_times.json` | **Receipt number → HH:MM lookup** — not available from any public API | 110 KB |
 | `earnings_recent60.json` | Earnings scoreboard, latest 60 (truncation‑safe) | 40 KB |
@@ -505,8 +506,10 @@ Every filing is joined to that stock's daily closes and to its market index, so 
 https://aikstockdata.com/data/public/disclosure_impact.json
 ```
 
-For each filing type: the **median market‑adjusted return** at +1 / +5 / +20 trading days
+For each filing type: the **median market‑adjusted return** at +1 / +5 trading days
 (stock return minus its own index over the same window), plus how often it beat the market.
++20 trading days appears per type once that type's sample is full — read `h20_status`
+in the response before concluding it's missing.
 Per‑filing values are keyed by DART receipt number, so you can join back to the original document.
 (`배당 결정` = dividend decision. Live values as of 2026‑08‑07; they change every trading evening — always read the interval from the file, not from this page.)
 
