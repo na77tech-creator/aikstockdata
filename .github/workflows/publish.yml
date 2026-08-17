@@ -1,0 +1,52 @@
+# PyPI 배포 — **의도적으로 비활성**입니다.
+#
+# ★트리거가 workflow_dispatch(수동) 하나뿐입니다. 태그 푸시·릴리스 트리거를 넣지
+#   않았습니다. 넣으면 누군가 태그를 다는 순간 자동으로 세상에 나갑니다 — 이 저장소는
+#   아직 PyPI 에 아무것도 올린 적이 없고, 첫 업로드는 사람이 결정할 일입니다.
+#   (에이전트는 계정 생성·토큰 발급·업로드를 하지 않습니다. 여기까지가 준비입니다.)
+#
+# ★PYPI_API_TOKEN 시크릿이 없으면 이 워크플로는 **실패하는 것이 정상**입니다.
+#   시크릿 등록은 저장소 소유자 몫입니다:
+#     Settings → Secrets and variables → Actions → New repository secret
+#     이름: PYPI_API_TOKEN
+#
+# 배포 전에 반드시 통과시킬 것(python/README.md 릴리스 절차와 같은 목록):
+#   python tests/test_client.py
+#   python tests/test_catalog_sync.py     ← SDK 경로가 라이브 카탈로그에 다 있는가
+#   python tests/test_packaging.py
+name: publish-to-pypi
+
+on:
+  workflow_dispatch:          # 수동 실행만. push·release 트리거 없음(회귀가 검사한다).
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 검사를 먼저 돌린다. 여기서 막히면 올라가지 않는다.
+      - name: 계약 검사
+        run: |
+          python tests/test_client.py
+          python tests/test_catalog_sync.py
+          python tests/test_packaging.py
+
+      - name: 빌드
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: 업로드
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine upload dist/*

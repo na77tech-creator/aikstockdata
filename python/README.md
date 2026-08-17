@@ -13,6 +13,21 @@ print(c.get_snapshot("005930")["name"])
 print(c.search("삼성")[:3])
 ```
 
+## 수록 범위
+
+**여기에 숫자를 적지 않습니다.** 종목 수도 파일 수도 시간이 지나면 바뀌고, 문서에
+박아 둔 숫자는 그때부터 거짓이 됩니다. 현재 수록 범위는 `client.get_catalog()` 가
+알려 줍니다 — 그것이 매 거래일 다시 만들어지는 유일한 정본입니다.
+
+```python
+cat = a.Client().get_catalog()
+print(len(cat["endpoints"]), "종")          # 공개 데이터셋
+print(sorted(cat["file_bytes"])[:5])        # 실제 발행 파일
+```
+
+(이 규칙은 회귀가 강제합니다 — `tests/test_packaging.py` 가 이 README 에서
+`숫자+종목` 패턴을 찾아 1건이라도 있으면 실패시킵니다.)
+
 ## 먼저 알아야 할 것
 
 - **실시간이 아닙니다.** 매 거래일 18:10 KST 발행이고 시세는 T+1 확정 종가입니다.

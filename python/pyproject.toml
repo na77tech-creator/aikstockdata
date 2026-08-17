@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aikstockdata"
+description = "한국주식데이터(aikstockdata.com) 공개 JSON 클라이언트 — 의존성 0, 가입·API 키 없음"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "aikstockdata" }]
+keywords = ["korea", "stock", "kospi", "kosdaq", "dart", "opendata", "finance", "mcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Office/Business :: Financial",
+    "Natural Language :: Korean",
+]
+
+# ★의존성 0 이 이 패키지의 설계다. urllib + json 만 쓴다 — 설치 장벽이 곧 사용
+#  장벽이라, requests 조차 넣지 않는다. 이 빈 리스트가 비어 있는지 회귀가 검사한다.
+dependencies = []
+
+# ★버전은 aikstockdata/__init__.py 한 곳에만 있다. 여기에 숫자를 적으면 두 벌이 되고,
+#  두 벌은 언젠가 갈라지고, 갈라진 쪽이 배포된다. dynamic 으로 그 파일에서 읽는다.
+dynamic = ["version"]
+
+[project.optional-dependencies]
+pandas = ["pandas>=2.0"]
+
+[project.urls]
+"사이트" = "https://aikstockdata.com"
+"데이터 카탈로그" = "https://aikstockdata.com/data/public/index.json"
+"MCP 서버" = "https://mcp.aikstockdata.com/mcp"
+"소스" = "https://github.com/na77tech-creator/aikstockdata"
+
+[tool.hatch.version]
+path = "aikstockdata/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aikstockdata"]

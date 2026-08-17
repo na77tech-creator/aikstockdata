@@ -5,6 +5,11 @@
     python quickstart.py 삼성전자    # look up by name, then fetch
 
 Standard library only. No dependencies.
+
+There are two Python examples on purpose. This one installs nothing — useful on
+locked-down networks, air-gapped boxes and CI. The other,
+python/examples/quickstart_sdk.py, uses `pip install aikstockdata`. Both read the
+same data; neither replaces the other, so neither is being removed.
 """
 import json
 import sys
