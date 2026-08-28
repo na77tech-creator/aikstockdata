@@ -1,6 +1,6 @@
 # aikstockdata — 한국 주식 공시·시세를 AI가 바로 읽는 무료 JSON + MCP 서버
 
-**KOSPI·KOSDAQ 전 종목의 확정 종가·지수, DART 공시, 종목당 1년치 일별 시세를
+**KOSPI·KOSDAQ·KONEX 전 종목의 확정 종가와 KOSPI·KOSDAQ 지수, DART 공시, 종목당 1년치 일별 시세를
 매 거래일 저녁 AI가 읽을 수 있는 JSON으로 발행합니다.
 가입도, API 키도, 요청 제한도 없습니다.**
 
