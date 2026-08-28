@@ -1,8 +1,12 @@
 # aikstockdata — 한국 주식 공시·시세를 AI가 바로 읽는 무료 JSON + MCP 서버
 
-**KOSPI·KOSDAQ 약 1,500종목의 확정 종가·지수, DART 공시, 종목당 1년치 일별 시세를
+**KOSPI·KOSDAQ 전 종목의 확정 종가·지수, DART 공시, 종목당 1년치 일별 시세를
 매 거래일 저녁 AI가 읽을 수 있는 JSON으로 발행합니다.
 가입도, API 키도, 요청 제한도 없습니다.**
+
+<sub>수록 종목 수는 매 거래일 바뀝니다 — 여기에 수를 적어 두면 그 순간부터 낡습니다.
+현재 값은 [`index.json`](https://aikstockdata.com/data/public/index.json) 의 `coverage`
+(`universe_n` · `published_n` · `excluded_n`)에 있습니다.</sub>
 
 🔗 **사이트** https://aikstockdata.com · **MCP 주소** `https://mcp.aikstockdata.com/mcp`
 
