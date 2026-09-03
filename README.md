@@ -280,8 +280,11 @@ https://aikstockdata.com/data/public/disclosure_impact.json
 | [Hugging Face](https://huggingface.co/datasets/aikstockdata/korea-equity-daily) | JSON Lines · 종목 마스터 · 일별 종가 · 공시 유형별 이후 주가 |
 | [Kaggle](https://www.kaggle.com/datasets/aikstokdata/korean-equity-daily-prices-dart-filing-impact) | CSV 4개 · **공시 접수 시각 열 포함** |
 
-인용용 **월간 동결본**은 허깅페이스의 `korea-equity-daily-YYYY-MM` 에 따로 있습니다.
-`main` 은 매 거래일 덮어쓰이므로 인용에 쓸 수 없습니다.
+인용용 **월간 동결본**은 허깅페이스의 `korea-equity-daily-YYYY-MM` 에 따로 있습니다 —
+한 번 올리고 다시 고치지 않으므로 이름만 적으면 됩니다(리비전 해시 불필요).
+`main` 은 **갱신될 때마다 통째로 덮어쓰이는 자리**라 인용에 쓸 수 없습니다.
+그 스냅샷이 언제 것인지는 데이터셋 카드 첫 줄이 날짜로 밝힙니다 —
+매 거래일 갱신되는 것은 미러가 아니라 [사이트의 원본](https://aikstockdata.com/data/public/index.json)입니다.
 
 ---
 
@@ -289,7 +292,7 @@ https://aikstockdata.com/data/public/disclosure_impact.json
 
 MCP 없이 주소만 쓸 때 필요한 표입니다. **크기는 정확한 수가 아니라 띠**입니다 —
 파일은 매 거래일 커지므로 여기 수를 박아 두면 그날 저녁부터 거짓이 됩니다.
-2026-09-01 18:10 KST 기준이고, 현재 값은 언제나
+2026-09-02 18:10 KST 기준이고, 현재 값은 언제나
 [`index.json`](https://aikstockdata.com/data/public/index.json) 의 `file_bytes` 에 있습니다.
 
 > ⚠️ **대부분의 AI fetch 도구는 응답을 150 KB 안팎에서 자릅니다. 잘린 JSON 은
@@ -300,12 +303,12 @@ MCP 없이 주소만 쓸 때 필요한 표입니다. **크기는 정확한 수�
 | 파일 | 무엇이 들었나 | 크기 |
 |---|---|---|
 | [`earnings.json`](https://aikstockdata.com/data/public/earnings.json) | 어닝 스코어보드(실적 공시 롤링 120일 — rankings 에서 분리) | ★큼 (~2,905 KB) — 직접 받지 말고 `earnings_recent60.json` |
-| [`disclosure_impact.json`](https://aikstockdata.com/data/public/disclosure_impact.json) | 공시 유형별 이후 주가 경로(시장조정 중앙값) | ★큼 (~1,634 KB) — 직접 받지 말고 `disclosure_impact_summary.json` |
+| [`disclosure_impact.json`](https://aikstockdata.com/data/public/disclosure_impact.json) | 공시 유형별 이후 주가 경로(시장조정 중앙값) | ★큼 (~1,639 KB) — 직접 받지 말고 `disclosure_impact_summary.json` |
 | [`quotes.json`](https://aikstockdata.com/data/public/quotes.json) | 시세 전체(T+1 종가) | ★큼 (~732 KB) — 직접 받지 말고 `quotes_top300.json` |
 | [`screen.json`](https://aikstockdata.com/data/public/screen.json) | ★조건 검색 재료(전 종목 한 줄 — 흑자전환·시총/영업이익 배수·52주 신고저) | ★큼 (~540 KB) — 직접 받지 말고 `screen_top300.json` |
 | [`search_index.json`](https://aikstockdata.com/data/public/search_index.json) | 종목 인덱스(전 종목 code·이름·개별 JSON URL 리터럴 — 476KB, URL 조립 못 하는 환경용) | ★큼 (~476 KB) — 직접 받지 말고 `search_index_rows.json` |
 | [`earnings_calendar.json`](https://aikstockdata.com/data/public/earnings_calendar.json) | ★실적 캘린더(이번 분기 접수 완료 / 아직 없음 + 법정 마감 D-day) | ★큼 (~445 KB) — 직접 받지 말고 `earnings_calendar_summary.json` |
-| [`quotes_slim.json`](https://aikstockdata.com/data/public/quotes_slim.json) | 시세 경량판(핵심 6필드 · 375KB · 잘림 문턱 초과 — 전 종목이 필요할 때) | ★큼 (~375 KB) — 직접 받지 말고 `quotes_min.json` |
+| [`quotes_slim.json`](https://aikstockdata.com/data/public/quotes_slim.json) | 시세 경량판(핵심 6필드 · 374KB · 잘림 문턱 초과 — 전 종목이 필요할 때) | ★큼 (~374 KB) — 직접 받지 말고 `quotes_min.json` |
 | [`dart_receipt_times.json`](https://aikstockdata.com/data/public/dart_receipt_times.json) | ★DART 공시 접수 시각(HH:MM) — 공개 API 에는 날짜만 있고 시:분이 없다 | ★큼 (~326 KB) — 직접 받지 말고 `dart_receipt_times_min.json` |
 | [`disclosures.json`](https://aikstockdata.com/data/public/disclosures.json) | 공시 브리핑 전체(쉬운 풀이·점수·접수 시각·재무원장) | ★큼 (~312 KB) — 직접 받지 말고 `disclosures_top100.json` |
 | [`quotes_en.csv`](https://aikstockdata.com/data/public/quotes_en.csv) | 시세 CSV(영문 헤더) | ★큼 (~287 KB) — 도구로 직접 받지 마세요 |
@@ -318,14 +321,14 @@ MCP 없이 주소만 쓸 때 필요한 표입니다. **크기는 정확한 수�
 | [`quotes_top300.json`](https://aikstockdata.com/data/public/quotes_top300.json) | 시총 상위 300(내림차순 정렬 보장 — '시총 상위 N' 질문용) | 보통 (~83 KB) |
 | [`disclosures_top100.json`](https://aikstockdata.com/data/public/disclosures_top100.json) | ★주요 공시 TOP100(중요도순 — 잘림 안전 66KB) | 보통 (~66 KB) |
 | [`screen_top300.json`](https://aikstockdata.com/data/public/screen_top300.json) | 조건 검색 재료 소형판(시총 상위 300 — 잘림 안전) | 보통 (~65 KB) |
-| [`disclosures_intraday.json`](https://aikstockdata.com/data/public/disclosures_intraday.json) | ★장중 공시 목록 — 매 거래일 15:00 수집, 접수 시각(HH:MM) 포함. 본 발행(18:10)을 기다리지 않고 종가 전에 쓰라고 따로 낸다 | 보통 (~56 KB) |
+| [`disclosures_intraday.json`](https://aikstockdata.com/data/public/disclosures_intraday.json) | ★장중 공시 목록 — 매 거래일 15:00 수집, 접수 시각(HH:MM) 포함. 본 발행(18:10)을 기다리지 않고 종가 전에 쓰라고 따로 낸다 | 보통 (~57 KB) |
 | [`disclosure_impact_summary.json`](https://aikstockdata.com/data/public/disclosure_impact_summary.json) | ★'이 유형 공시 뒤 주가가 어땠나'의 정답 경로(유형별 요약만 — 대형본의 1/15) | 보통 (~55 KB) |
+| [`notices.json`](https://aikstockdata.com/data/public/notices.json) | 정정·공지 로그(기계가독) | 보통 (~49 KB) |
 | [`dart_receipt_times_min.json`](https://aikstockdata.com/data/public/dart_receipt_times_min.json) | ★공시가 장중에 나왔나 마감 뒤에 나왔나(접수 시각 최근분 소형판) | 작음 (~49 KB) |
-| [`notices.json`](https://aikstockdata.com/data/public/notices.json) | 정정·공지 로그(기계가독) | 작음 (~45 KB) |
 | [`disclosures_intraday_min.json`](https://aikstockdata.com/data/public/disclosures_intraday_min.json) | ★종가 전에 오늘 공시를 보고 싶을 때(장중 15:00 수집분 경량판) | 작음 (~30 KB) |
 | [`rankings.json`](https://aikstockdata.com/data/public/rankings.json) | 랭킹(성장·조용한 실적주·신고저) | 작음 (~28 KB) |
-| [`search_index_aliases.json`](https://aikstockdata.com/data/public/search_index_aliases.json) | 종목 한글 별칭(코드 → 한글로 읽은 이름 — 이름 검색용) | 작음 (~15 KB) |
 | [`market_index_history.json`](https://aikstockdata.com/data/public/market_index_history.json) | ★지수 시계열(코스피·코스닥 일별 종가 — 시장조정의 기준선) | 작음 (~15 KB) |
+| [`search_index_aliases.json`](https://aikstockdata.com/data/public/search_index_aliases.json) | 종목 한글 별칭(코드 → 한글로 읽은 이름 — 이름 검색용) | 작음 (~15 KB) |
 | [`today.json`](https://aikstockdata.com/data/public/today.json) | 오늘의 시장 다이제스트(하루 요약 — 등락·주요공시·성장·실적·집계) | 작음 (~10 KB) |
 | [`earnings_calendar_summary.json`](https://aikstockdata.com/data/public/earnings_calendar_summary.json) | ★'이번 분기 실적, 몇 곳이 냈고 마감까지 며칠 남았나' | 작음 (~9 KB) |
 | [`excluded.json`](https://aikstockdata.com/data/public/excluded.json) | 제외 종목 목록 | 작음 (~4 KB) |
@@ -541,26 +544,26 @@ https://aikstockdata.com/data/public/index.json
 | `today.json` | One‑day digest — **KOSPI/KOSDAQ index close**, breadth, top filings, rankings | small (~10 KB) |
 | `s/{code6}.json` | **One stock** — quote, financials, recent filings, signals | small (~4 KB × 2,836 files) |
 | `s/{code6}_history.json` | **One stock, 250 trading days** — `[date, close, volume]` | small (~9 KB × 2,798 files) |
-| `disclosure_impact.json` | **What happened after each filing type** — market‑adjusted median return at +1/+5 trading days (+20 once that type's sample is full — see `h20_status`) | ★large (~1,634 KB) — fetch `disclosure_impact_summary.json` instead |
-| `disclosures_intraday.json` | **Today's filings with receipt times (HH:MM)** — published 15:00 KST, before the close | medium (~56 KB) |
+| `disclosure_impact.json` | **What happened after each filing type** — market‑adjusted median return at +1/+5 trading days (+20 once that type's sample is full — see `h20_status`) | ★large (~1,639 KB) — fetch `disclosure_impact_summary.json` instead |
+| `disclosures_intraday.json` | **Today's filings with receipt times (HH:MM)** — published 15:00 KST, before the close | medium (~57 KB) |
 | `dart_receipt_times.json` | **Receipt number → HH:MM lookup** — not available from any public API | ★large (~326 KB) — fetch `dart_receipt_times_min.json` instead |
 | `earnings_recent60.json` | Earnings scoreboard, latest 60 (truncation‑safe) | medium (~112 KB) |
-| `daily/today_{YYYYMMDD}.json` | Archived daily digest (30‑day window) | small (~9 KB × 24 files) |
+| `daily/today_{YYYYMMDD}.json` | Archived daily digest (30‑day window) | small (~9 KB × 25 files) |
 | `search_index_min.json` | Name → code lookup (URL patterns declared once) | ★large (~163 KB) — fetch `search_index_rows.json` instead |
 | `disclosures_top100.json` | Top 100 filings by importance score, plain‑Korean explanation | medium (~66 KB) |
 | `quotes_top300.json` | Top 300 by market cap, sort order guaranteed | medium (~83 KB) |
 | `rankings.json` | Growth top 8, quiet performers, 52‑week highs/lows, movers | small (~28 KB) |
 | `earnings.json` | Earnings filings, 120‑day rolling scoreboard | ★large (~2,905 KB) — fetch `earnings_recent60.json` instead |
-| `quotes_slim.json` | All stocks, 6 core fields | ★large (~375 KB) — fetch `quotes_min.json` instead |
+| `quotes_slim.json` | All stocks, 6 core fields | ★large (~374 KB) — fetch `quotes_min.json` instead |
 | `quotes.json` | All stocks, all fields | ★large (~732 KB) — fetch `quotes_top300.json` instead |
 | `disclosures.json` | All filings from the last 7 days, with financial detail | ★large (~312 KB) — fetch `disclosures_top100.json` instead |
 | `excluded.json` | Stocks in the universe with no quote, and why | small (~4 KB) |
-| `notices.json` | Machine‑readable incident and correction log | small (~45 KB) |
+| `notices.json` | Machine‑readable incident and correction log | medium (~49 KB) |
 | `quotes.csv` | All stocks as CSV (Korean headers) | ★large (~287 KB) — do not fetch directly |
 | `quotes_en.csv` | All stocks as CSV (English headers) | ★large (~287 KB) — do not fetch directly |
 
 <sub>**Sizes are bands, not fixed numbers.** Files grow every trading day, so a number
-written here is stale the next evening. Measured 2026-09-01 18:10 KST from
+written here is stale the next evening. Measured 2026-09-02 18:10 KST from
 [`index.json`](https://aikstockdata.com/data/public/index.json) — its `file_bytes` always
 has the current byte count, and `fetch_guide.small_alternatives` names the smaller file to
 use instead. Right now 12 of 32 files are over the 150 KB
