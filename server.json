@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.aikstockdata/mcp",
   "title": "aikstockdata — Korean Stock Data",
-  "description": "Korean stocks: median price path after each DART filing type, plus T+1 closes.",
-  "version": "2.1.0",
+  "description": "Korean stocks: median price path after each DART filing type, T+1 closes, earnings. 12 tools, no key",
+  "version": "2.1.2",
   "websiteUrl": "https://aikstockdata.com",
   "repository": {
     "url": "https://github.com/na77tech-creator/aikstockdata",
