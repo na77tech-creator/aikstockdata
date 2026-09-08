@@ -24,7 +24,7 @@ metadata:
   name: aikstockdata
   displayName: 한국주식데이터 (Korean Stock Data)
   description: >-
-    KOSPI/KOSDAQ confirmed closing prices (T+1, Financial Services Commission),
+    KOSPI/KOSDAQ/KONEX confirmed closing prices (T+1, Financial Services Commission),
     DART regulatory filings with receipt time (HH:MM), preliminary quarterly
     earnings, and post-filing price paths by filing type. No signup, no API key.
   homepage: https://aikstockdata.com
