@@ -9,6 +9,15 @@
     "url": "https://github.com/na77tech-creator/aikstockdata",
     "source": "github"
   },
+  "icons": [
+    {
+      "src": "https://aikstockdata.com/img/logo_mark.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "160x160"
+      ]
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",
