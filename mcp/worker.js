@@ -5,7 +5,7 @@
  *   initialize / notifications/* (202) / tools/list / tools/call / ping 지원.
  *   GET /mcp → 405(JSON 에러 본문). GET / → 사람용 안내 HTML. Mcp-Session-Id 는 무시(무상태).
  * - 원천: https://aikstockdata.com/data/public/* (공공데이터 가공물 — DART 공시·금융위 T+1 시세·
- *   기계 랭킹). 100% 공개/재배포 합법(공공데이터법). KIS 원시 데이터 미사용(2026-07-23 공공 전환).
+ *   기계 랭킹). 공공 원천 가공물 — 이용 조건은 aiksd-public-1.1. KIS 원시 데이터 미사용(2026-07-23 공공 전환).
  *   인메모리 10분 캐시(+원천 실패 시 스테일 재사용).
  * - 빌드 도구 없음: 이 파일 하나가 배포 단위(deploy_mcp.py 가 그대로 PUT).
  * - 준법: 모든 도구 응답에 기준일 + 출처 URL + "투자 권유가 아닌 정보 제공입니다" 1줄 포함.
@@ -46,38 +46,44 @@ const LATEST_VERSION = "2025-06-18";
 // 고르는 모델이 "그냥 또 하나의 주가 API"로 읽고 지나쳤다. 맨 앞에 둔다.
 //
 // ★"국내외 유일" 단정 금지(§7-7). Smithery 에 원격 한국주식 MCP 가 실재한다 —
-//   반례 하나에 서사 전체가 무너지는 문장을 만들지 않는다. "우리가 아는 한"을 붙인다.
+//   반례 하나에 서사 전체가 무너지는 문장을 만들지 않는다.
+// ★[2026-09-11 · AUDIT_R R15] 한 걸음 더 — **완화형("우리가 아는 한 여기뿐")도 뺐다.**
+//   반례가 이미 알려져 있었고, 우리는 남의 서버를 잰 적이 없다. 등재처 편집자 규칙은
+//   배타·최상급 문장을 싫어한다(FreeAPIHub: "Accurate and factual (not exaggerated)").
+//   남과 비교하지 않고 **우리가 주는 것만** 적는다 — 그건 확인할 수 있다.
 // ★h20 광고 금지(§7-8). 다만 "아직 발행 안 한다"고 못 박지도 않는다 — 채워지는 날
 //   그 문장이 거짓이 된다. 상태는 disclosure_impact.json 의 h20_status 가 말한다(P-5).
 // ★'서프라이즈' 금지(§7-2) — 컨센서스 데이터가 없다. YoY 방향까지만.
 const INSTRUCTIONS =
-  "★What this server has that others do not: post-filing price paths BY DISCLOSURE TYPE — " +
+  "★What this server serves: post-filing price paths BY DISCLOSURE TYPE — " +
   "market-adjusted median return at h0/h1/h5 with 95% CI and up-ratio, plus the underlying " +
-  "per-event ledger ({N_EVENTS} events with receipt timestamp and session). To our knowledge this is " +
-  "the only sign-up-free, key-free remote MCP serving this for Korean equities. " +
-  "Ask it things like \"유상증자 공시 다음날 주가는 보통 어땠나\" via get_disclosure_impact. " +
+  "per-event ledger ({N_EVENTS} events with receipt timestamp and session), with no sign-up or API key. " +
+  "Ask it things like \"공급계약 공시 다음날 주가는 보통 어땠나\" via get_disclosure_impact. " +
   "When a 95% CI includes zero the response says so — that means 'not distinguishable', not 'no effect'. " +
   "h20 (+20 trading days) appears per type once that type has enough samples — read " +
   "h20_status in disclosure_impact.json rather than assuming; missing is not the same as zero. | " +
-  "★남들에게 없는 것: 공시 유형별 이후 주가 경로(시장조정 중앙값 h0/h1/h5·CI95·상승확률)와 " +
-  "그 근거가 되는 이벤트 원장 {N_EVENTS}건(접수 시각·세션 포함). 우리가 아는 한, 가입·API 키 없이 " +
-  "이것을 주는 원격 한국주식 MCP 는 여기뿐입니다. | " +
+  "★이 서버가 주는 것: 공시 유형별 이후 주가 경로(시장조정 중앙값 h0/h1/h5·CI95·상승확률)와 " +
+  "그 근거가 되는 이벤트 원장 {N_EVENTS}건(접수 시각·세션 포함) — 가입·API 키 없이. | " +
   "Korean stock data from aikstockdata.com (한국주식데이터): DART disclosures in easy language, " +
   "Financial Services Commission (금융위) T+1 confirmed closing prices, and machine-computed rankings " +
-  "for {MARKETS}. Refreshed every trading day at 18:10 KST. No auth, no API key — 100% public, " +
-  "open-government data (freely redistributable). All data is a dated snapshot, not real-time — always " +
+  "for {MARKETS}. Refreshed every trading day around 18:30 KST (the run starts at 18:10). No auth, no API key. Derived from Korean " +
+  "government open data (DART, FSC). Non-commercial use with attribution; commercial redistribution is " +
+  "not permitted. Market prices are also subject to the FSC source licence (KOGL Type 4). " +
+  "All data is a dated snapshot, not real-time — always " +
   "read the '기준일' (as-of date) in every tool response. A value of null means 'not provided' and is " +
   "different from 0. Rankings are mechanical calculations from public financials, not stock picks. " +
   "This server provides information only; it is not investment advice. " +
   "IMPORTANT — the tool list is NOT the extent of the data. Preliminary quarterly earnings "
-  + "(filed ~2 weeks before the regular report), 250 trading days of daily prices per stock, "
+  + "(filed ~2 weeks before the regular report), an accumulating daily price history per stock (one row added every trading day, never truncated), "
+  + "PER(TTM) and PBR computed from public filings (valuation in /data/public/s/{code}.json, pe_ttm/pb in screen.json; " +
+  "only consensus-based forward PER is absent), "
   + "post-filing price paths by filing type, and an intraday (15:00 KST) disclosure list with "
   + "receipt timestamps are all available. Call get_data_urls() before concluding that "
-  + "something is unavailable. | ★도구 목록이 데이터의 전부가 아닙니다. 잠정실적·1년 일별 "
+  + "something is unavailable. | ★도구 목록이 데이터의 전부가 아닙니다. 잠정실적·PER(TTM)·PBR·종목별 일별 "
   + "시계열·공시 유형별 이후 주가·장중 공시(접수 시각)가 모두 있습니다. '없다'고 결론내기 "
   + "전에 get_data_urls() 를 부르세요. | Fair use: this data changes once per trading day "
-  + "(18:10 KST) — polling faster than that returns the same values, it doesn't get you "
-  + "fresher ones. | 공정 이용: 이 데이터는 매 거래일 18:10 한 번만 바뀝니다 — 그보다 "
+  + "(around 18:30 KST) — polling faster than that returns the same values, it doesn't get you "
+  + "fresher ones. | 공정 이용: 이 데이터는 매 거래일 18:30 전후 한 번만 바뀝니다 — 그보다 "
   + "자주 불러도 같은 값이 돌아올 뿐 새 값을 안 줍니다.";
 
 const CORS_HEADERS = {
@@ -116,6 +122,19 @@ async function fetchJson(path) {
 // ── 포맷 헬퍼 ─────────────────────────────────────────────────────────────
 const fmt = (n) => (n == null ? "미제공" : Number(n).toLocaleString("en-US"));
 const pct = (v) => (v == null ? "미제공" : `${v > 0 ? "+" : ""}${v}%`);
+// ★[2026-09-11] 실적 머리글의 **기간 길이**. 「2026.06 기준」만 적으면 1~6월 누적 값이
+//   2분기 단독으로 읽힌다 — 독립 채점표가 실제로 그렇게 읽고 「실적은 못 믿는 서버」라
+//   적었다(값은 맞았다). 행에 실린 누적 표시로만 말하고, 표시가 없으면 짐작하지 않는다.
+//   12월 기수는 사실 문장 꼬리말이 이미 「연간」이라 부르므로 여기서 겹쳐 말하지 않는다.
+function periodSpan(per, cum) {
+  const m = /^(\d{4})[.\-]?(\d{2})$/.exec(String(per || "").trim());
+  if (!m) return "";
+  const mm = Number(m[2]);
+  if (![3, 6, 9].includes(mm)) return "";
+  if (cum === true) return mm === 3 ? "1~3월" : `1~${mm}월 누적`;
+  if (cum === false) return `${mm - 2}~${mm}월 단독 분기`;
+  return "";
+}
 
 /**
  * 목록을 잘라 보일 때 **잘랐다는 사실과 전체 건수**를 한 문장으로 돌려준다.
@@ -248,7 +267,7 @@ function breadthDivergence(mi, b) {
 // [2026-08-10 감사 P3-F] "데이터 20종"은 카탈로그 실물(endpoints 26개)과 어긋난다.
 // 개수를 여기 하드코딩하면 카탈로그가 늘 때마다 조용히 틀려진다 — 숫자를 뺀다.
 const MORE_LINE =
-  "데이터 전체 카탈로그: get_data_urls() — 잠정실적(earnings)·1년 일별 시계열·" +
+  "데이터 전체 카탈로그: get_data_urls() — 잠정실적(earnings)·종목별 일별 시계열·" +
   "공시 이후 주가(disclosure_impact)·장중 공시(접수 시각)도 있습니다. 조건으로 목록을 뽑으려면 list_stocks().";
 
 // ★[2026-08-17 P3-8] 스키마와 데이터셋 메타의 **존재**를 말한다.
@@ -261,17 +280,21 @@ const MORE_LINE =
 // 한 줄이다. 모든 응답에 나가는 자리라 길이가 곧 비용이다.
 // ★개수를 쓰지 않는다. "스키마 9종"은 열 번째가 생기는 날 거짓말이 된다
 //   (MORE_LINE 이 "데이터 20종"으로 정확히 그 사고를 겪고 숫자를 뺐다).
+// ★[2026-09-11 · AUDIT_R R6] 디렉터리 주소(/schemas/)는 404 다 — 목록 파일이 없다.
+//   개별 스키마는 200 이고 전체 목록은 index.json 의 schemas 에 있다.
+//   ★첫 토막(" ·" 앞)은 **한 문자열 안에** 둔다 — test_mcp_dataset_meta [6] 이 그 토막을
+//    통째로 바꿔 끼워 결함을 주입한다. 두 줄로 쪼갰더니 주입이 헛돌았다(09-11 실측).
 const SCHEMA_LINE =
-  `필드 정의(JSON Schema 2020-12): ${ORIGIN}/data/public/schemas/ · ` +
+  `필드 정의(JSON Schema 2020-12): ${ORIGIN}/data/public/schemas/stock.schema.json (전체 목록은 index.json 의 schemas) · ` +
   `데이터셋 메타·라이선스: ${ORIGIN}/data/public/index.json`;
 
 // ★[2026-08-10 P1-J · 실사용자 감사] 커버리지를 성공 응답에도 밝힌다.
 // 지금까지 "1,500"은 **검색 실패 메시지에서만** 나왔다. 정상 경로로 답을 받은
 // 사용자에게는 도달하지 않는다는 뜻이다. 그런데 "상승 690·하락 679"나
 // "52주 신고가 12종목"이 **전체 시장 수치로 재인용되면 이 서비스가 오답의 출처**가
-// 된다 — 재배포 자유 라이선스라 실제로 흘러간다.
+// 된다 — 출처 표기 인용이 허용된 공개 데이터라 실제로 흘러간다.
 // ★[2026-08-17 P2-10] 숫자를 문장에 박아 두면 확대하는 날 이 문장이 거짓말이 된다.
-//   그런데 소비자는 이 숫자를 그대로 인용한다 — 재배포 자유 라이선스라 실제로 흘러간다.
+//   그런데 소비자는 이 숫자를 그대로 인용한다 — 출처 표기 인용이 허용된 공개 데이터라 실제로 흘러간다.
 //   그래서 이미 서빙 중인 /data/public/index.json 의 coverage 블록에서 읽는다
 //   (sitegen 이 _COUNTS 로 매 발행 채우는 값). fetchJson 이 캐시하므로 매 요청마다
 //   원본을 때리지 않는다.
@@ -286,7 +309,7 @@ const SCHEMA_LINE =
 //     · "상장 전체가 아닙니다"
 //   ★그냥 틀린 정도가 아니다 — **있는 데이터를 없다고 말하고 있었다.** 이 저장소
 //     최초의 실사용자 신고가 정확히 그 사고였다(CLAUDE.md §4). 게다가 이 줄은
-//     재배포 자유 라이선스를 타고 모든 도구 응답에 실려 나간다.
+//     모든 도구 응답에 실려 인용된다.
 //   ⇒ 정말로 남은 단서는 다른 것이다: **랭킹만** 보통주로 좁힌다
 //     (`build_rankings.ELIGIBLE_CLASS=("common",)`). 그 사실이 지금까지 어디에도
 //     없었다. 그 수도 손으로 적지 않는다 — `coverage.rankings_eligible_n` 에서
@@ -330,6 +353,27 @@ function isoDate(v) {
   if (/^\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6)}`;
   if (/^\d{4}[.\/]\d{2}[.\/]\d{2}$/.test(s)) return s.replace(/[.\/]/g, "-");
   return s;      // 모르는 모양은 건드리지 않는다 — 지어내는 것보다 그대로가 낫다
+}
+
+/**
+ * 오늘(KST) 공시를 물었는데 오늘 장중 수집본이 없을 때 할 말 — 순수 함수(회귀가 직접 부른다).
+ * ★[2026-09-15 · 14호 D-03] 「없습니다」로 끝내지 않는다. 수집 전인지, 휴장일인지, 수집이
+ *   빠졌는지를 가른다. 휴장·공휴일 달력은 이 저장소에 없으므로 주말만 판정한다.
+ * @param {string} hm  지금 KST "HH:MM"
+ * @param {string} latest  가장 최근 장중 수집본의 기준일 YYYYMMDD(없으면 "")
+ * @param {number} dow  KST 요일(0=일)
+ */
+function todayIntradayGap(hm, latest, dow) {
+  const prev = latest ? ` 직전 수집본은 date="${latest}" 로 부르면 나옵니다.` : "";
+  if (dow === 0 || dow === 6) {
+    return `오늘은 주말이라 장중 공시 수집이 없습니다(공시가 없다는 뜻이 아닙니다).${prev}`;
+  }
+  if (hm < "15:10") {
+    return `오늘 장중 공시는 **아직 수집 전**입니다 — 수집은 매 거래일 15:00 한 번이고 지금은 KST ${hm} 입니다. ` +
+      `공시가 없다는 뜻이 아닙니다. 지금 접수분은 DART 최근공시 목록에서 보세요.${prev}`;
+  }
+  return `오늘(KST) 장중 수집본이 아직 발행되지 않았습니다 — 휴장일이거나 수집이 늦어진 것입니다` +
+    `(공시가 없다는 뜻이 아닙니다 · 수집 실패는 ${ORIGIN}/data/public/notices.json 에 기록됩니다).${prev}`;
 }
 
 function footer(basisDate, srcPath) {
@@ -394,7 +438,7 @@ function clampNum(v, lo, hi, dflt, name, notes) {
 
 const ORIGIN_FAIL_TEXT =
   "죄송합니다 — 데이터 원천(aikstockdata.com)에 일시적으로 접속하지 못했습니다. " +
-  "잠시 후 다시 시도해 주세요. 데이터는 매 거래일 저녁 18:10(KST)에 갱신되는 정적 파일이라 " +
+  "잠시 후 다시 시도해 주세요. 데이터는 매 거래일 저녁 18:30 전후(KST)에 갱신되는 정적 파일이라 " +
   "보통 곧 복구됩니다. 원천 직접 확인: " + ORIGIN + "/data/public/quotes.json";
 
 // ── 도구 6개 (전부 공개 데이터 /data/public/*) ──────────────────────────────
@@ -406,7 +450,8 @@ const TOOLS = [
       "Start here for \"how was the Korean market today?\" — index levels, breadth, 52-week high/low " +
       "counts, top-3 disclosures, growth top-3, movers and disclosure-type counts in one call. " +
       "Then drill down with get_stock / list_stocks / get_disclosures. " +
-      "Coverage: top-by-market-cap universe (see coverage in index.json), not the full listing. | " +
+      "Coverage: every listed stock in the FSC price feed (no ETFs/ETNs); markets and " +
+      "counts are in index.json coverage and in each response footer. | " +
       "\"오늘 시장 어땠어?\"의 출발점 — 지수·등락 폭·주요 공시·성장 랭킹·등락률 상하위를 한 번에. " +
       "이어서 get_stock / list_stocks / get_disclosures 로 파고들면 됩니다.",
     inputSchema: { type: "object", properties: {} },
@@ -415,7 +460,14 @@ const TOOLS = [
       const basis = d["as_of"] || "";
       const b = d["market_breadth"] || {};
       const out = [];
-      out.push("오늘의 한국 증시 요약 (한국주식데이터 · 금융위 T+1 확정 종가)");
+      // ★[2026-09-15 · 14호 D-04] 제목이 「오늘의 한국 증시 요약」이었다. 화요일 12:40 에 부르면
+      //   금요일(09-11) 종가가 나온다 — 발행 전·주말·휴일에는 두 영업일 전일 수도 있다.
+      //   「오늘」은 사람이 묻는 말이라 도구 설명에 남기고, 답의 제목에는 **그 날짜를** 적는다.
+      const _bIso = isoDate(basis);
+      const _bDow = /^\d{4}-\d{2}-\d{2}$/.test(_bIso)
+        ? "일월화수목금토"[new Date(_bIso + "T00:00:00Z").getUTCDay()] : "";
+      out.push(`한국 증시 요약 — 직전 확정 거래일 ${_bIso || "미기록"}${_bDow ? `(${_bDow})` : ""} ` +
+        "(한국주식데이터 · 금융위 T+1 확정 종가 · 오늘 장 시세가 아닙니다)");
       out.push(`- 기준일: ${isoDate(basis)} · 스냅샷(실시간 아님)`);
       // 지수가 먼저다. "오늘 시장 어땠어"의 답은 등락 종목 수가 아니라 지수다.
       const ix = indexLine(d["market_index"]);
@@ -432,8 +484,17 @@ const TOOLS = [
       if (mu.length || md.length) {
         out.push("");
         out.push("[등락률 상·하위]");
-        if (mu.length) out.push("  상승 " + mu.slice(0, 3).map((x) => `${x["name"]}(${x["code"]}) ${pct(x["change_pct"])}`).join(" · "));
-        if (md.length) out.push("  하락 " + md.slice(0, 3).map((x) => `${x["name"]}(${x["code"]}) ${pct(x["change_pct"])}`).join(" · "));
+        // ★[2026-09-15 · 14호 D-08] 하락 1위가 이노벡스 3원 −57.14%(정리매매로 보이는 코넥스)였는데 아무 표시가 없었다.
+        //   어느 시장의 제한폭(±30%)으로도 설명되지 않는 등락에 표지를 단다. 문턱은 sitegen.PRICE_LIMIT_MAX_PCT 와 같다([241]).
+        const BEYOND_LIMIT_PCT = 30.0;
+        const _out = (x) => Math.abs(Number(x["change_pct"])) > BEYOND_LIMIT_PCT + 0.005;
+        const _mv = (x) => `${x["name"]}(${x["code"]}) ${pct(x["change_pct"])}${_out(x) ? "[제한폭 밖]" : ""}`;
+        if (mu.length) out.push("  상승 " + mu.slice(0, 3).map(_mv).join(" · "));
+        if (md.length) out.push("  하락 " + md.slice(0, 3).map(_mv).join(" · "));
+        if ([...mu.slice(0, 3), ...md.slice(0, 3)].some(_out)) {
+          out.push("  [제한폭 밖] = 하루 가격제한폭(±30%)보다 크게 움직임 — 정리매매·재상장 첫날·기준가 조정 등일 수 있으나 " +
+            "어느 경우인지는 원천에 없습니다. 급등락 종목 추천이 아닙니다.");
+        }
       }
       const td = d["top_disclosures"] || [];
       if (td.length) {
@@ -499,12 +560,14 @@ const TOOLS = [
     //   설명은 구현을 따라간다. 못 하는 것만 못 한다고 적는다(로마자 표기 'samsung').
     description:
       "Find a ticker from part of the name — Korean or Latin, case-insensitive — or a 6-digit " +
-      "code, within the market-cap-ranked universe (ETFs included). Korean readings of " +
-      "Latin names also match ('네이버' finds NAVER, '케이티' finds KT/KTis). Romanised Korean " +
+      "code, across every listed stock we publish (no ETFs; markets are named in the response footer). Korean readings of " +
+      "Latin names also match ('네이버' finds NAVER, '케이티' finds KT/KTis), and so do common Korean " +
+      "nicknames for large caps ('삼전' finds 삼성전자, '하닉' SK하이닉스). Romanised Korean " +
       "does not ('samsung' returns nothing; '삼성' works). Up to 10 matches, market-cap sorted. | " +
       "이름 일부(한글·영문 모두, 대소문자 무시)나 6자리 코드로 찾습니다. 영문 이름의 " +
-      "한글 읽기도 매치됩니다('네이버'→NAVER, '케이티'→KT·KTis). 다만 한국어의 로마자 " +
-      "표기는 안 됩니다('samsung' 0건, '삼성' 14건). 시총 상위 유니버스 · 시총순 최대 10건.",
+      "한글 읽기('네이버'→NAVER, '케이티'→KT·KTis)와 흔한 줄임말('삼전'→삼성전자, '하닉'→SK하이닉스)도 " +
+      "매치됩니다. 다만 한국어의 로마자 " +
+      "표기는 안 됩니다('samsung' 0건, '삼성'은 여러 건). 수록 전 종목 · 시총순 최대 10건.",
     inputSchema: {
       type: "object",
       properties: {
@@ -531,7 +594,8 @@ const TOOLS = [
           // ★발행 쪽이 계산해 실어 보낸 한글 읽기(k)를 **먼저** 쓴다. 규칙이 두 곳에
           //   있으면 갈라지므로, 데이터에 있으면 그것이 정답이다. 없을 때만(옛 인덱스·
           //   전파 지연) 아래 자체 계산으로 물러선다.
-          (Array.isArray(s.k) ? s.k : koReadings(s.n)).some((r) => r.includes(q))
+          //   ★[14호 D-05] k 에 줄임말(「삼전」「SKT」)도 실린다 — 대소문자 무시로 본다(「skt」).
+          (Array.isArray(s.k) ? s.k : koReadings(s.n)).some((r) => String(r).toLowerCase().includes(ql))
       );
       const basis = idx["as_of"] || "";
       if (hits.length === 0) {
@@ -580,14 +644,14 @@ const TOOLS = [
     title: "종목 상세 (Stock detail)",
     description:
       "One Korean stock by 6-digit code: T+1 confirmed close & change, market cap, latest " +
-      "quarterly financials (revenue / operating income / net income, with YoY), and ranking signals. " +
+      "financials from the latest periodic report (revenue / operating income / net income, with YoY; " + "Korean reports are cumulative year-to-date, so H1 = Jan-Jun, not Q2 alone), PER(TTM) and PBR computed from public filings, and ranking signals. " +
       "Two as-of dates move independently — price (quote_as_of) and filings (disclosure_through); " +
       "the response header carries both, do not merge them into one \"today\". null means not provided, " +
-      "never 0. Name → code: search_stock. 250 trading days of prices: get_history. Filings with " +
+      "never 0. Name → code: search_stock. Daily price history (accumulating): get_history. Filings with " +
       "receipt times: get_disclosures. Screening a list: list_stocks. | " +
-      "6자리 코드로 한 종목 — 확정 종가·등락·시총·최근 분기 실적(전년비)·랭킹 신호. " +
+      "6자리 코드로 한 종목 — 확정 종가·등락·시총·최근 정기보고서 실적(전년비 · 반기는 1~6월 누적)·PER(TTM)·PBR·랭킹 신호. " +
       "기준일이 둘이고 따로 움직입니다(시세·공시) — 응답 머리말에 둘 다 실리니 하나로 합치지 마세요. " +
-      "null 은 '미제공'이며 0이 아닙니다. 이름으로 찾기는 search_stock, 1년 시세는 get_history, " +
+      "null 은 '미제공'이며 0이 아닙니다. 이름으로 찾기는 search_stock, 일별 시세는 get_history, " +
       "접수 시각이 있는 공시는 get_disclosures, 조건 목록은 list_stocks.",
     inputSchema: {
       type: "object",
@@ -666,7 +730,8 @@ const TOOLS = [
         const na = f["newer_available"];
         if (na) {
           const yo = (v) => (v == null ? "" : ` (${pct(v)})`);
-          const head = `⚠ 더 최신: ${na["period"] || "기간 미상"} ${na["label"] || "잠정 실적"}` +
+          const _span = periodSpan(na["period"], na["누적"]);
+          const head = `⚠ 더 최신: ${na["period"] || "기간 미상"}${_span ? ` (${_span})` : ""} ${na["label"] || "잠정 실적"}` +
             `${na["rcept_dt"] ? ` · ${na["rcept_dt"]} 접수` : ""}`;
           out.push("");
           out.push(head);
@@ -689,6 +754,23 @@ const TOOLS = [
           }
           out.push(`  DART 원문: ${na["dart_url"] || ""}`);
         }
+      }
+      // ★[2026-09-15 · AI_DOCS_AUDIT C-01] 종목 파일에 valuation(PER(TTM)·PBR)이 09-05 부터 있었는데 이 렌더러가
+      //   읽지 않았다. 그래서 「삼성전자 PER 알려줘」에 MCP 는 「PER 미제공」으로 답했다(웹 경로는 10.4배를 찾았다).
+      //   데이터는 있는데 도구가 말하지 않으면 소비자는 없다고 결론낸다(CLAUDE.md §4) — 값이 null 이면 사유(pe_note)를 말한다.
+      const va = s["valuation"];
+      if (va && (va["pe_ttm"] != null || va["pb"] != null || va["pe_note"] || va["pb_note"])) {
+        const vb = va["basis"] || {};
+        const one = (v, note) => (v != null ? `${fmt(v)}배` : `미제공${note ? ` (${note})` : ""}`);
+        out.push("");
+        // ★[2026-09-15 · 14호 후속] 재무 기수가 없는 종목(우선주 등)에서 「· 재무  ]」 빈칸이 남았다. 있는 조각만 적는다.
+        const _vHead = ["가치 지표", "공시 재무 기계 산정",
+          vb["market_cap_asof"] ? `시총 ${isoDate(vb["market_cap_asof"])}` : "",
+          [vb["financial_period"], vb["fs"]].filter(Boolean).length ? `재무 ${[vb["financial_period"], vb["fs"]].filter(Boolean).join(" ")}` : "재무 기수 없음"];
+        out.push(`[${_vHead.filter(Boolean).join(" · ")}]`);
+        out.push(`- PER(TTM): ${one(va["pe_ttm"], va["pe_note"])}${vb["pe_periods"] ? ` · 순이익 기간 ${vb["pe_periods"]}` : ""}`);
+        out.push(`- PBR: ${one(va["pb"], va["pb_note"])}`);
+        if (va["method"]) out.push(`  산식: ${va["method"]}`);
       }
       const sig = s["signals"] || {};
       const sigLines = [];
@@ -904,7 +986,8 @@ const TOOLS = [
         out.push(`필드 정의 (JSON Schema · ${idx["schemas_note"] || "draft 2020-12"}):`);
         for (const s of schemas) out.push(`- ${s}`);
       } else {
-        out.push(`필드 정의(JSON Schema): ${ORIGIN}/data/public/schemas/`);
+        //  ★[2026-09-12 · AUDIT_W W8] 디렉터리 주소는 404 다 — 살아 있는 한 장을 준다.
+        out.push(`필드 정의(JSON Schema): ${ORIGIN}/data/public/schemas/stock.schema.json`);
       }
       out.push("");
       out.push(`종목 하나만 필요하면 ${ORIGIN}/data/public/s/종목코드6.json (예: /s/005930.json)`);
@@ -919,11 +1002,12 @@ const TOOLS = [
     name: "get_earnings",
     title: "잠정·정기 실적 (Quarterly earnings, incl. preliminary)",
     description:
-      "Quarterly earnings from DART, INCLUDING preliminary (잠정) results filed ~2 weeks before the " +
-      "regular report. Pass a code for one stock's history, or omit it for the largest caps. " +
-      "get_stock returns the REGULAR report only — use this for the newest numbers. | " +
-      "DART 분기 실적 — 정기보고서보다 2주 빠른 잠정실적 포함. code 를 주면 그 종목 이력, " +
-      "생략하면 시총 상위. get_stock 은 정기보고서만 주므로 최신 수치는 이 도구로 보세요.",
+      "Earnings from DART, INCLUDING preliminary (잠정) results filed ~2 weeks before the regular report. " +
+      "Each row says whether the figure is year-to-date cumulative or a single quarter. " +
+      "Pass a code for one stock's history, or omit it for the largest caps. " +
+      "get_stock shows the regular report and flags a newer preliminary filing when one exists; this tool gives the preliminary figures in full. | " +
+      "DART 실적 — 정기보고서보다 2주 빠른 잠정실적 포함. 행마다 누적인지 단독 분기인지 적습니다. code 를 주면 그 종목 이력, " +
+      "생략하면 시총 상위. get_stock 은 정기보고서 수치에 더 최신 잠정실적이 있다는 표시를 붙이고, 잠정 수치 전체는 이 도구가 줍니다.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1006,7 +1090,8 @@ const TOOLS = [
         // 정정본 표기 — is_correction 은 disclosures.json 이 이미 계산해 둔 값이고
         // earnings.json 으로 옮기는 중이다(P1-G). 없으면 조용히 생략한다.
         const corr = x["is_correction"] === true ? " (기재정정)" : "";
-        out.push("- " + x["rcept_dt"] + " 접수 · " + (per ? per + " 기준" : "기간 미상") +
+        const span = periodSpan(per, x["누적"] ?? (x["fin"] || {})["누적"]);
+        out.push("- " + x["rcept_dt"] + " 접수 · " + (per ? per + " 기준" + (span ? " · " + span : "") : "기간 미상") +
           " · " + (x["name"] || "") + " · " + lab +
           (bas && lab.indexOf(bas) < 0 ? "(" + bas + ")" : "") + corr);
         out.push("  " + (st === "ok"
@@ -1043,19 +1128,20 @@ const TOOLS = [
   },
   {
     name: "get_history",
-    title: "종목 일별 시세 1년 (Daily price history)",
+    title: "종목 일별 시세 (Daily price history)",
     description:
       "Answers \"is this stock near its high or deep in a drawdown, and is volume unusual?\" — " +
-      "250 trading days of daily CLOSES, plus period high/low, drawdown from the high, and volume " +
-      "vs the 60-day average. Close-based (the upstream feed has no intraday high/low), so it will " +
+      "the stock's accumulated daily CLOSES, plus period high/low, drawdown from the high, and volume " +
+      "vs the 60-day average. Close-based (this history file carries daily closes only; " +
+      "the latest day's high/low is in the stock file), so it will " +
       "differ from an HTS 52-week range. | \"고점 대비 얼마나 빠졌나·거래량이 평소보다 많나\"에 " +
-      "답합니다 — 250거래일 **종가 기준** 고저·낙폭·거래량 배수. 장중 고저가 아니라 HTS 52주 " +
+      "답합니다 — 보유 구간 전체의 **종가 기준** 고저·낙폭·거래량 배수. 장중 고저가 아니라 HTS 52주 " +
       "범위와 다를 수 있습니다.",
     inputSchema: {
       type: "object",
       properties: {
         code: { type: "string", description: "6-digit ticker | 6자리 종목코드" },
-        days: { type: "number", description: "recent N days to list, default 20, max 60 — for all 250 rows read /data/public/s/{code}_history.json | 나열할 최근 일수(기본 20, **최대 60**. 250행 전체는 s/{code}_history.json)" },
+        days: { type: "number", description: "recent N days to list, default 20, max 60 — for the full history read /data/public/s/{code}_history.json | 나열할 최근 일수(기본 20, **최대 60**. 전체 이력은 s/{code}_history.json)" },
       },
       required: ["code"],
     },
@@ -1098,8 +1184,10 @@ const TOOLS = [
       out.push("전 영업일 확정 종가이며 수정주가가 아닙니다 — 권리락·병합 구간은 계열이 끊깁니다.");
       // ★[2026-08-10 P6-I] 계산이 아니라 라벨을 고친다. 원천이 금융위 T+1 종가셋이라
       // 구조적으로 종가 기준일 수밖에 없다. pykrx 장중 기준과 낙폭이 2.0pp 차이 난다.
-      out.push("고저·낙폭은 **종가 기준**입니다 — 원천 데이터에 장중 고가·저가가 없어 " +
-        "HTS 의 52주 고저(장중 기준)와 다를 수 있습니다. 창은 250거래일(약 12.5개월)입니다.");
+      //  ★[2026-09-11 · AUDIT_R R4] "원천에 장중 고저가 없다"는 틀렸다 — 같은 원천의
+      //   s/{code}.json 에 quote.high·low 가 있다. **시계열 파일이 종가만 싣는 것**이다.
+      out.push("고저·낙폭은 **종가 기준**입니다 — 이 시계열은 일별 종가만 싣기 때문에 " +
+        "HTS 의 52주 고저(장중 기준)와 다를 수 있습니다. 창은 보유 구간 전체입니다.");
       for (const n of notes) out.push("※ " + n);
       return out.join("\n") + footer(h["as_of"] || "", "/data/public/s/" + code + "_history.json");
     },
@@ -1111,10 +1199,12 @@ const TOOLS = [
     // AI 는 이름과 첫 문장만 보고 고른다. 필드 나열은 고르는 데 도움이 안 된다.
     description:
       "Answers \"what usually happened after this kind of filing?\" — median MARKET-ADJUSTED return " +
-      "at +1/+5 trading days per DART filing type, with 95% intervals, sample window and n. " +
-      "A historical record, not a forecast. Not available from other free Korean sources. " +
-      "Coverage: top-by-market-cap universe (see coverage in index.json), not the full listing. | " +
-      "\"이 공시 나오면 보통 어땠나\"에 답합니다 — 공시 유형별로 접수 이후 1·5거래일 뒤까지 " +
+      "at +1/+5/+20 trading days per DART filing type (+20 only where that type has enough samples — " +
+      "see h20_status), with 95% intervals, sample window and n. A historical record, not a forecast. " +
+      "Coverage: every listed stock in the FSC price feed (no ETFs/ETNs); markets and " +
+      "counts are in index.json coverage and in each response footer. | " +
+      "\"이 공시 나오면 보통 어땠나\"에 답합니다 — 공시 유형별로 접수 이후 1·5·20거래일 뒤까지" +
+      "(20거래일은 표본이 찬 유형만) " +
       "시장 등락을 뺀 수익률 중앙값·95% 구간·표본기간. 과거 기록이며 예측·추천이 아닙니다.",
     inputSchema: {
       type: "object",
@@ -1390,28 +1480,46 @@ const TOOLS = [
     description:
       "Answers \"what was filed, and when exactly?\" — DART filings with RECEIPT TIME (HH:MM) and " +
       "session (pre-open / intraday / after-close), filterable by date, type and importance. " +
-      "The receipt time is not exposed by any public Korean API. Roughly 40% of filings arrive " +
-      "AFTER the close, so that day's price move is not a reaction to them. date=today serves the " +
+      "OpenDART's filing-list API returns the receipt date only; we add the HH:MM. About half of " +
+      "tracked filings arrive AFTER the close (daily counts: /data/public/press_owl_filings.csv), " +
+      "so that day's price move is not a reaction to them. date=today serves the " +
       "15:00 intraday collection (no importance scores yet); any other date serves the ranked list " +
       "of the last 7 days. | " +
       "\"무슨 공시가 몇 시에 났나\"에 답합니다 — 접수 시각(HH:MM)과 장 구분까지. " +
-      "공개 API 어디에도 없는 값입니다. 날짜·유형·중요도로 거를 수 있습니다. " +
-      "접수분의 **40% 안팎이 장 마감 후**라 그날 등락은 그 공시의 반응이 아닙니다. " +
+      "공개 공시 목록 API(OpenDART)는 접수 날짜까지만 줍니다 — 시:분은 저희가 모읍니다. " +
+      "날짜·유형·중요도로 거를 수 있습니다. " +
+      "추적 유형 기준 **절반 안팎이 장 마감 후** 접수라(날짜별은 press_owl_filings.csv) " +
+      "그날 등락은 그 공시의 반응이 아닙니다. " +
       "date=오늘이면 15:00 장중 수집본(아직 중요도 점수 없음), 다른 날짜면 최근 7일 상위 목록입니다.",
     inputSchema: {
       type: "object",
       properties: {
-        date: { type: "string", description: "YYYYMMDD. 오늘이면 장중 수집본, 아니면 최근 7일 상위 목록 | today for intraday" },
+        date: { type: "string", description: "YYYYMMDD (예: 20260910). \"today\" 도 받습니다 — 오늘(KST)로 풀어 장중 수집본을 줍니다. 생략하면 최근 7일 중요도 상위 목록입니다. | YYYYMMDD, or \"today\" for the intraday snapshot; omit for the last 7 days by importance." },
         session: { type: "string", description: "pre_open | intraday | after_close" },
         label: { type: "string", description: "공시 유형 부분일치(예: 배당, 자사주)" },
         min_score: { type: "number", description: "중요도 점수 하한(장중 수집본에는 점수가 없습니다)" },
         limit: { type: "number", description: "최대 건수(기본 20, 최대 100)" },
+        include_unlisted: { type: "boolean", description: "장중 수집본에서 비상장 법인·우리가 발행하지 않는 종목의 공시(채권 신고서 등)까지 볼지. 기본 false — 상장 종목(in_universe)만. | include filings of unlisted issuers in the intraday snapshot (default false)" },
       },
     },
     run: async (args) => {
       const notes = [];
       const limit = clampNum(args.limit, 1, 100, 20, "limit", notes);
-      const wantDate = String(args.date ?? "").trim().replace(/-/g, "");
+      // ★[2026-09-10] 설명이 약속한 말을 코드가 알아듣게 한다.
+      //   이 도구 설명은 "today for intraday" 라고 적어 두었는데, 코드는 그 글자를
+      //   그대로 날짜로 써서 **어떤 날짜와도 안 맞았다.** 실측: date="today" 는
+      //   「이 기준일에 수집된 공시가 없습니다」를 돌려주고, 같은 순간
+      //   date="20260910" 은 공시 2건을 준다. 영문을 읽은 AI 가 리터럴 "today" 를
+      //   넣고 「오늘 공시 없음」이라 답하게 된다 — 데이터가 있는데도.
+      //   이 저장소 최초의 실사용자 신고와 같은 부류다(§4). 그때는 도구가 존재를
+      //   말하지 않아 「없다」로 읽혔고, 이번엔 도구가 「없습니다」라고 직접 말한다.
+      //   ★사람이 쓰는 말을 받아 주는 것이 도구의 일이다. 코드를 맞추게 하지 않는다.
+      const _rawDate = String(args.date ?? "").trim();
+      const _isToday = /^(today|now|오늘|금일)$/i.test(_rawDate);
+      const wantDate = _isToday
+        ? new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, "")
+        : _rawDate.replace(/-/g, "");
+      if (_isToday) notes.push(`date="${_rawDate}" 를 오늘(KST) ${wantDate} 로 읽었습니다.`);
       const wantSess = String(args.session ?? "").trim();
       const wantLabel = String(args.label ?? "").trim();
       const minScore = args.min_score != null ? Number(args.min_score) : null;
@@ -1435,6 +1543,20 @@ const TOOLS = [
           head = `주요 공시 — ${wantDate}`;
         }
       }
+      // ★[2026-09-15 · 14호 후속] 장중 수집본은 그날 접수된 **전부**라, 15:07 실측 169건 중 71건이
+      //   비상장·발행 밖(채권 효력발생안내 등)이었고 첫 화면 5줄이 전부 그것이었다. 주식 사용자에게는
+      //   소음이다. 기본은 상장 종목만, 그 안에서 **우리가 분류한 유형을 먼저**(24/98건) — 뺀 수와 되돌리는 법을 말한다(§4).
+      let _unlistedDropped = 0, _labeledN = null;
+      if (intraday) {
+        if (args.include_unlisted !== true) {
+          const _n0 = items.length;
+          items = items.filter((x) => x["in_universe"] === true);
+          _unlistedDropped = _n0 - items.length;
+        }
+        const _lab = items.filter((x) => x["label"]), _rest = items.filter((x) => !x["label"]);
+        _labeledN = _lab.length;
+        items = _lab.concat(_rest);
+      }
       const before = items.length;
       if (wantSess) items = items.filter((x) => String(x["session"] || "") === wantSess);
       if (wantLabel) items = items.filter((x) => String(x["label"] || "").indexOf(wantLabel) >= 0);
@@ -1444,24 +1566,51 @@ const TOOLS = [
       if (intraday) {
         // ★함정을 먼저 말한다. 이 한 줄이 없으면 장중에 물어본 사람이
         // 전 거래일 목록을 오늘 것으로 읽는다.
-        out.push(`수집 시각 ${doc["generated_kst"] || "미기록"} — 수집은 매 거래일 15:00 한 번입니다. ` +
-          "그 이전 시간에 물으면 **직전 수집본**이 나옵니다.");
+        //   ★[14호 후속] 「그 이전 시간에 물으면 직전 수집본이 나옵니다」였다 — D-03 뒤로는 15:00 전에
+        //    오늘을 물으면 「아직 수집 전」이라고 답한다. 옛 동작을 설명하던 문장을 지금 동작으로.
+        out.push(`수집 시각 ${doc["generated_kst"] || "미기록"} — 수집은 매 거래일 15:00 한 번이라 ` +
+          "그 뒤 접수분은 들어 있지 않습니다(저녁 발행 전체판에서 보세요).");
         if (doc["error"]) out.push(`⚠ 이 수집본에 오류가 기록돼 있습니다: ${doc["error"]}`);
         out.push("장중 수집본에는 중요도 점수가 없습니다 — 점수로 거르려면 date 를 빼고 부르세요.");
+        if (_unlistedDropped) {
+          out.push(`상장 종목 공시만 보여 줍니다 — 비상장 법인·발행 밖 종목 공시 ${fmt(_unlistedDropped)}건은 뺐습니다` +
+            "(include_unlisted=true 로 전부).");
+        }
+        if (_labeledN != null) {
+          out.push(`순서: 저희가 유형을 분류한 공시 ${fmt(_labeledN)}건을 먼저, 나머지는 뒤에 — 각 묶음 안은 접수 시각순입니다.`);
+        }
       }
       out.push("");
       if (!items.length) {
-        out.push(before ? `조건에 맞는 공시가 없습니다(필터 전 ${before}건).`
-                        : "이 기준일에 수집된 공시가 없습니다.");
+        // ★[2026-09-15 · 14호 D-03] 오늘을 물었는데 장중 파일이 아직 오늘 것이 아니면
+        //   「이 기준일에 수집된 공시가 없습니다」라고 답하고 있었다(12:40 실측). 공시가 없는 게
+        //   아니라 **15:00 수집 전**이다 — 침묵이 '없음'으로 읽힌다(CLAUDE.md §4).
+        const _kst = new Date(Date.now() + 9 * 3600 * 1000);
+        const _todayK = _kst.toISOString().slice(0, 10).replace(/-/g, "");
+        const _hm = _kst.toISOString().slice(11, 16);
+        if (!before && wantDate === _todayK && !intraday) {
+          const _idoc = await fetchJson("/data/public/disclosures_intraday.json").catch(() => null);
+          const _ib = String((_idoc || {})["기준일"] || "").replace(/-/g, "");
+          out.push(todayIntradayGap(_hm, _ib, _kst.getUTCDay()));
+        } else {
+          out.push(before ? `조건에 맞는 공시가 없습니다(필터 전 ${before}건).`
+                          : "이 기준일에 수집된 공시가 없습니다.");
+        }
         out.push("유형 목록은 get_disclosure_impact() 로, 전체는 " + ORIGIN + "/data/public/disclosures.json");
         for (const n of notes) out.push("※ " + n);
         return out.join("\n") + footer(doc["기준일"] || doc["as_of"] || "", src);
       }
       for (const x of items.slice(0, limit)) {
-        const t = x["receipt_time"] ? ` ${x["receipt_time"]}` : "";
-        const se = x["session"] && x["session"] !== "unknown" ? ` · ${x["session"]}` : "";
-        const sc = x["score"] != null ? ` · 중요도 ${x["score"]}` : "";
-        out.push(`- ${x["rcept_dt"] || ""}${t}${se} ${x["name"] || ""} · ${x["label"] || ""}${sc}`);
+        //  ★[14호 후속] 장중본은 rcept_dt·label 이 비는 건이 많아 「-  07:30 · pre_open NH투자증권 · 」처럼
+        //   빈 칸과 끝 점이 남았다. 있는 조각만 잇는다.
+        const _parts = [
+          [x["rcept_dt"] || "", x["receipt_time"] || ""].filter(Boolean).join(" "),
+          x["session"] && x["session"] !== "unknown" ? x["session"] : "",
+          x["name"] || "",
+          x["label"] || "",
+          x["score"] != null ? `중요도 ${x["score"]}` : "",
+        ];
+        out.push("- " + _parts.filter(Boolean).join(" · "));
         if (x["fact"]) out.push("  " + x["fact"]);
         else if (x["title"]) out.push("  " + x["title"]);
         // ★[2026-08-12] 소형판(disclosures_top100.json)은 유형별 값을 항목마다
@@ -1495,9 +1644,11 @@ const TOOLS = [
     description:
       "Return the LIST of stocks matching a condition — turnaround to profit, 52-week high/low, " +
       "growth or quiet-performer rankings — with optional market-cap range and a cap-to-operating-income " +
-      "multiple ceiling. Other tools give counts; this one gives the names. | 조건에 맞는 종목 " +
+      "multiple ceiling. Other tools give counts; this one gives the names. new_high/new_low return at most 30 names per side " +
+      "(the published list); the full count is in get_market_summary(). | 조건에 맞는 종목 " +
       "목록을 돌려줍니다 — 흑자전환·52주 신고저·성장/조용한 실적주. 시총 범위와 " +
-      "시총÷연환산영업이익 배수 상한도 걸 수 있습니다. 다른 도구가 개수를 준다면 이건 목록을 줍니다.",
+      "시총÷연환산영업이익 배수 상한도 걸 수 있습니다. 다른 도구가 개수를 준다면 이건 목록을 줍니다. " +
+      "52주 신고가·신저가는 발행 목록이 쪽마다 최대 30종목이고, 전체 수는 get_market_summary 가 줍니다.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1535,7 +1686,7 @@ const TOOLS = [
         // 받아야 했다(약 20분). 이제 screen.json 에 열로 들어 있다.
         min_drawdown_pct: {
           type: "number",
-          description: "고점 대비 낙폭 하한(%, 양수로). 예: 30 이면 250거래일 최고 종가 대비 30% 이상 하락한 종목만",
+          description: "고점 대비 낙폭 하한(%, 양수로). 예: 30 이면 보유 구간 최고 종가 대비 30% 이상 하락한 종목만",
         },
         max_drawdown_pct: {
           type: "number",
@@ -1645,7 +1796,19 @@ const TOOLS = [
         new_high: "52주 신고가", new_low: "52주 신저가",
         growth: "성장 TOP", quiet: "조용한 실적주", all: "전체",
       };
-      const out = [NAME_KO[F] + " — " + nMatched + "종목"];
+      // ★[2026-09-15 · AI_DOCS_AUDIT T-08] 52주 신고·신저 플래그는 발행 목록(쪽마다 최대 30) 수록 여부다.
+      //   전체가 37종목인 날 「52주 신저가 — 30종목」이라 말하면 목록 크기가 전체 수로 읽힌다. 전체 수를 같이 말한다.
+      let head52 = "";
+      if (F === "new_high" || F === "new_low") {
+        try {
+          const td = await fetchJson("/data/public/today.json");
+          const n52 = (td["highs_lows_52w"] || {})[F === "new_high" ? "n_high" : "n_low"];
+          if (typeof n52 === "number") head52 = ` (전체 ${fmt(n52)}종목 중 발행 목록은 최대 30종목)`;
+        } catch (e) {
+          head52 = " (발행 목록 기준 — 쪽마다 최대 30종목, 전체 수는 get_market_summary)";
+        }
+      }
+      const out = [NAME_KO[F] + " — " + nMatched + "종목" + head52];
       if (nAfter !== nMatched) out.push("추가 조건 적용 후 " + nAfter + "종목");
       if (!nAfter) {
         out.push("");
@@ -1671,7 +1834,7 @@ const TOOLS = [
           (cutLo != null ? `하한 ${loP}%ile = ${fmtCut(cutLo)} 이상` : "") +
           (cutLo != null && cutHi != null ? " · " : "") +
           (cutHi != null ? `상한 ${hiP}%ile = ${fmtCut(cutHi)} 이하` : "") +
-          " (모집단 시총 상위 유니버스 기준)");
+          " (모집단: 수록 전 종목 기준)");
       }
       // ★[2026-08-10 P5-E] 배수가 어느 보고서 기준인지 밝힌다. 7/30 에 접수된 반기
       // 잠정(영업이익 146.73조)을 반영하지 않아 삼성전자가 5.9배로 나오는데, 잠정
@@ -1729,24 +1892,41 @@ async function marketsLabel() {
   return "";
 }
 
+//  ★[2026-09-12 · AUDIT_W W3] MCP 만 붙인 AI 는 llms.txt·index.json 을 안 읽는다. 그래서
+//   업종·목표가·선행PER 같은 **없는 것**을 있다고 답할 수 있고, 그 오답은 우리 이름으로 나간다.
+//   목록을 여기서 새로 적지 않는다 — 정본(index.json 의 quality.not_included_fields)을 읽어 붙인다.
+//   못 읽으면 **아무 말도 안 한다**(이 파일의 다른 주입과 같은 규칙 — 틀린 목록보다 침묵이 낫다).
+async function notIncludedLine() {
+  try {
+    const idx = await fetchJson("/data/public/index.json");
+    const f = ((idx || {})["quality"] || {})["not_included_fields"];
+    if (Array.isArray(f) && f.length) {
+      return " | 이 데이터에 **없는 것**: " + f.join(" · ") +
+             " (이유는 index.json 의 quality.not_included_reasons). Not in this dataset — do not answer as if it were.";
+    }
+  } catch (e) { /* 침묵 */ }
+  return "";
+}
+
 async function instructionsText() {
   const mk = await marketsLabel();
   let t = INSTRUCTIONS;
   t = mk ? t.replace(/\{MARKETS\}/g, mk)
          : t.replace("for {MARKETS}.", "for Korean equities.")
             .replace(/\{MARKETS\}/g, "Korean equities");
+  const ni = await notIncludedLine();          // 맨 뒤에 한 줄만 붙인다(앞을 밀어내지 않게)
   try {
     const d = await fetchJson("/data/public/disclosure_impact_summary.json");
     const n = d && d["n_events_used"];
     if (typeof n === "number" && n > 0) {
-      return t.replace(/\{N_EVENTS\}/g, n.toLocaleString("en-US"));
+      return t.replace(/\{N_EVENTS\}/g, n.toLocaleString("en-US")) + ni;
     }
   } catch (e) { /* 아래 폴백 */ }
-  return t
+  return (t
     .replace("({N_EVENTS} events with receipt timestamp and session)",
       "(per-event rows carry receipt timestamp and session)")
     .replace("원장 {N_EVENTS}건(접수 시각·세션 포함)", "원장(접수 시각·세션 포함)")
-    .replace(/\{N_EVENTS\}/g, "");
+    .replace(/\{N_EVENTS\}/g, "")) + ni;
 }
 
 // ★[2026-08-17 P3-8] 첫 악수에서 데이터셋을 소개한다.
@@ -1761,9 +1941,13 @@ async function instructionsText() {
 // ★못 읽어도 initialize 는 성공해야 한다. 메타 하나 때문에 연결 자체가 실패하면
 //   그게 더 큰 사고다 — 못 읽으면 주소만이라도 준다(지어내지 않는다).
 async function datasetMeta() {
+  //  ★[2026-09-12 · AUDIT_W W8] `schemas_base` 가 디렉터리 주소였고 그 주소는 **404** 다
+  //   (목록 파일이 없다 — 09-12 실측). 이 값은 `initialize` 응답에 실려 **모든 MCP 클라이언트가
+  //   연결 즉시 읽는다** — 심사자가 처음 보는 주소가 죽어 있었다. 살아 있는 스키마 한 장을
+  //   가리키고, 전체 목록은 index.json 의 schemas 가 준다(아래에서 그대로 싣는다).
   const base = {
     catalog: `${ORIGIN}/data/public/index.json`,
-    schemas_base: `${ORIGIN}/data/public/schemas/`,
+    schema_example: `${ORIGIN}/data/public/schemas/stock.schema.json`,
     openapi: `${ORIGIN}/openapi.json`,
   };
   try {
@@ -1846,13 +2030,25 @@ async function staleBanner() {
     // '지금 문제가 있나'는 다른 질문이다. 늑대를 매번 외치면 진짜 늑대를 놓친다.
     const rec = pl["recovered_dates"];
     const wasRecovered = Array.isArray(rec) && rec.indexOf(String(lf)) >= 0;
-    if (qa && lf && !wasRecovered &&
+    // ★[2026-09-11 · AUDIT_R R1] 재시도로 살아난 **당일**에는 위 목록이 아직 비어 있다.
+    // 성공 플래그·복구 목록은 발행이 **끝난 뒤** 쓰이고(run_pipeline.py), 발행 도장
+    // (deploy_api.stamp_publish)은 그 둘을 안 고친다. 그래서 09-11 은 18:10 이 막히고
+    // 19:30 재시도가 정상 발행됐는데도(this_run_status ok · gates 셋 통과 · 19:33 발행)
+    // **모든 MCP 응답이 월요일 발행까지 사흘 내내 "09-11 발행 실패"라고 말했다.**
+    // 08-12 에 같은 병을 목록으로 고쳤는데, 목록이 채워지기 전 구간이 남아 있었다.
+    // ⇒ "실패일 **당일에** 발행됐고 이 판이 게이트를 통과했다"면 그 날은 복구로 본다.
+    //   재시도도 실패한 날은 published_at_kst 가 전날에 머물러 있어 여전히 실패로 잡힌다.
+    const pubDay = String(pl["published_at_kst"] || "").slice(0, 10);
+    const recoveredToday = String(fr["this_run_status"] || "") === "ok" &&
+      !!lf && pubDay === String(lf).slice(0, 10);
+    if (qa && lf && !wasRecovered && !recoveredToday &&
         String(lf).replace(/-/g, "") > String(qa).replace(/-/g, "")) {
       bits.push(`시세 기준일 ${isoDate(qa)}, 그 이후 ${isoDate(lf)} 발행 실패 — 해당 거래일이 반영되지 않았습니다`);
     }
     if (pl["serving_last_good"] === true) bits.push("이번 발행분이 아니라 직전 성공본을 서빙 중입니다");
     const cf = Number(pl["consecutive_failure_days"] || 0);
-    if (!bits.length && cf > 0) bits.push(`최근 ${cf}일 연속 발행 실패 이력이 있습니다`);
+    //  같은 이유로 연속 실패 수도 복구된 당일에는 아직 1 로 남아 있다 — 그날은 말하지 않는다.
+    if (!bits.length && cf > 0 && !recoveredToday) bits.push(`최근 ${cf}일 연속 발행 실패 이력이 있습니다`);
 
     // ★[2026-08-12] 아래 상태어는 index.json 이 **발행 시점에** 계산해 둔 값이다.
     // 그래서 발행이 멈추면 그 값도 같이 멈춘다 — 데이터가 일주일 낡아도 계속
@@ -1892,7 +2088,7 @@ async function staleBanner() {
     const intradayHint = (dtIso && todayKst && todayKst > dtIso)
       ? " · 이후 접수분은 15:00 장중본(get_disclosures)" : "";
     const line = `[신선도] ${word} · 시세 ${iso(qa) || "?"}(T+1 확정)` +
-      (dt ? ` · 공시 ${dtIso}${intradayHint}` : "") + " · 다음 갱신 18:10 KST\n";
+      (dt ? ` · 공시 ${dtIso}${intradayHint}` : "") + " · 다음 갱신 18:30 전후(KST)\n";
 
     if (!bits.length) return line + "\n";
     return `⚠ 발행 지연 — ${bits.join(" · ")}.\n` + line +
@@ -1925,7 +2121,10 @@ async function doToolCall(id, params) {
   } catch (e) {
     const raw = e && e.isUserError ? e.message : ORIGIN_FAIL_TEXT;
     // 실패 문구야말로 다음 행동을 줘야 한다 — 여기서 막히면 사용자는 서비스를 떠난다.
-    const text = raw + "\n\n찾지 못했다면 시총 상위 유니버스 밖일 수 있습니다 — " +
+    //  ★[2026-09-11 · AUDIT_R R2] 수록 대상은 금융위 원천 전 종목이다. 못 찾는 경우는
+    //   그날 시세가 없는 종목(excluded.json — 전부 NO_QUOTE)이거나 ETF·ETN 이다.
+    const text = raw + "\n\n찾지 못했다면 그날 시세가 없는 종목(상장 직후·거래정지 등 — excluded.json)" +
+      "이거나 ETF·ETN(수록하지 않음)일 수 있습니다 — " +
       "조건 검색은 list_stocks(), 데이터 전체 카탈로그는 get_data_urls().";
     return rpcResult(id, { content: [{ type: "text", text }], isError: true });
   }
@@ -2069,16 +2268,15 @@ async function landingPage(url) {
 </head>
 <body>
 <h1>한국주식데이터 MCP 서버</h1>
-<p><a href="https://aikstockdata.com">aikstockdata.com</a>의 공개 데이터(KOSPI·KOSDAQ 공시(DART)·확정 종가(금융위 T+1)·기계 랭킹,
-매 거래일 저녁 6시 10분 KST 갱신)를 AI가 도구로 쓸 수 있게 하는 <strong>무인증·무료 MCP 서버</strong>입니다.
+<p><a href="https://aikstockdata.com">aikstockdata.com</a>의 공개 데이터(상장 전 종목의 DART 공시·확정 종가(금융위 T+1)·기계 랭킹,
+매 거래일 저녁 6시 30분 전후 KST 갱신)를 AI가 도구로 쓸 수 있게 하는 <strong>무인증·무료 MCP 서버</strong>입니다.
 회원가입·API 키가 필요 없고, 100% 공공데이터 가공물입니다.${basis ? ` 현재 데이터 기준일: <strong>${isoDate(basis)}</strong>.` : ""}</p>
 
 <h2>연결 방법</h2>
 <p>MCP 엔드포인트: <code>${ep}</code></p>
 <ul>
-  <li><strong>claude.ai</strong>: 설정 → 커넥터 → "커스텀 커넥터 추가" → 위 URL 붙여넣기 (인증 없음)</li>
-  <li><strong>Claude Desktop</strong>: 설정 → 커넥터 → 커스텀 커넥터 추가 → 위 URL 붙여넣기</li>
-  <li><strong>ChatGPT</strong>: 설정 → 커넥터 → 개발자 모드 활성화 후 커넥터 추가 → 위 URL 붙여넣기</li>
+  <li><strong>Claude</strong>(웹·데스크톱): Customize › Connectors → + → Add custom connector → 위 URL 붙여넣기 (인증 없음) · 무료 요금제는 커스텀 커넥터 1개까지</li>
+  <li><strong>ChatGPT</strong>(웹 · 유료 요금제): Settings › Security and login 에서 Developer mode 켜기 → ChatGPT Plugins 의 + 로 앱 만들기 → 위 URL · No Authentication (무료 요금제·모바일 앱은 아직 안 됨)</li>
 </ul>
 <p>프로토콜: MCP Streamable HTTP(무상태). <code>POST ${ep}</code> 에 JSON-RPC 2.0 메시지를 보냅니다.
 브라우저에서 <code>GET /mcp</code>는 405가 정상입니다.</p>
