@@ -669,11 +669,11 @@ Types with fewer than 20 samples are **not** given a number — a median over a 
 turns coincidence into a statistic. This is a record of what happened, not a claim about cause,
 and not a prediction.
 
-### 2. One year of daily prices per stock, as one small file
+### 2. Each stock's full daily price history, as one small file
 
 `s/{code6}_history.json` — the stock's full stored history of `[date, close, volume]`; since the 2026-09-14 publish it is not cut at 250 days and gains one row every trading day.
-Rows are arrays, not objects: repeating six key names 250 times doubles the file for no
-information (measured: 14.3 KB → 6.8 KB).
+Rows are arrays, not objects: repeating six key names on every row doubles the file for no
+information (measured on a 250-row file: 14.3 KB → 6.8 KB).
 
 ### 3. Index and breadth are kept separate — because they disagree
 
