@@ -1,5 +1,7 @@
 # aikstockdata — 한국 주식 공시·시세를 AI가 바로 읽는 무료 JSON + MCP 서버
 
+[![MCP Queen operational grade](https://mcpqueen.com/badge/com.aikstockdata/mcp.svg)](https://mcpqueen.com/s/com.aikstockdata/mcp)
+
 **KOSPI·KOSDAQ·KONEX 전 종목의 확정 종가와 KOSPI·KOSDAQ 지수, DART 공시, 종목당 전체 일별 시세를
 매 거래일 저녁 AI가 읽을 수 있는 JSON으로 발행합니다.
 가입도 API 키도 필요 없고, 요청 쿼터도 없습니다.**
